@@ -84,9 +84,31 @@ export const ConsensusVerdictSchema = z.object({
   finalReasoning: z.string(),
 });
 
+export const EvaluationSchema = z.object({
+  baseline: z.object({
+    overall: z.number().min(0).max(10),
+    consistency: z.number().min(0).max(10),
+    specificity: z.number().min(0).max(10),
+    reasoning: z.number().min(0).max(10),
+    coverage: z.number().min(0).max(10),
+    notes: z.string().describe("Short notes on baseline quality"),
+  }),
+  jury: z.object({
+    overall: z.number().min(0).max(10),
+    consistency: z.number().min(0).max(10),
+    specificity: z.number().min(0).max(10),
+    reasoning: z.number().min(0).max(10),
+    coverage: z.number().min(0).max(10),
+    notes: z.string().describe("Short notes on jury quality"),
+  }),
+  winner: z.enum(["baseline", "jury", "tie"]),
+  rationale: z.string().describe("1-2 sentence comparison rationale"),
+});
+
 export type BaselineOutput = z.infer<typeof BaselineSchema>;
 export type JurorPosition = z.infer<typeof JurorPositionSchema>;
 export type Critique = z.infer<typeof CritiqueSchema>;
 export type CritiquesOutput = z.infer<typeof CritiquesOutputSchema>;
 export type RevisedPosition = z.infer<typeof RevisedPositionSchema>;
 export type ConsensusVerdict = z.infer<typeof ConsensusVerdictSchema>;
+export type EvaluationOutput = z.infer<typeof EvaluationSchema>;

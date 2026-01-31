@@ -4,8 +4,8 @@ import { z } from "zod";
 const EnvSchema = z
   .object({
     OPENAI_API_KEY: z.string().min(1, "OPENAI_API_KEY is required"),
-    OPENAI_MODEL: z.string().min(1).default("gpt-4o"),
-    OPENAI_BASELINE_MODEL: z.string().min(1).optional(),
+    OPENAI_MODEL: z.string().min(1).default("gpt-5.2"),
+    OPENAI_BASELINE_MODEL: z.string().min(1).default("gpt-5-mini"),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
     LOG_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
     LOG_TRUNCATE_LENGTH: z.coerce.number().int().min(50).max(1000).optional(),

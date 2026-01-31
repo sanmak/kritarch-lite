@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+
+# Next.js build output
+.next
+out
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Env files
+.env
+.env.local
+.env.*
+
+# VCS
+.git
+.gitignore
+
+# Large local assets
+9fb8728f-9a34-43da-a79f-9bb8a3071f72.pdf
+
+# OS files
+.DS_Store
+
+spec
+*.pdf

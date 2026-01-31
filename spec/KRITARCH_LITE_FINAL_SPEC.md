@@ -30,7 +30,6 @@
 
 ### Non‑goals (hackathon scope)
 - Auth, multi‑tenant storage, billing
-- Persistent debate history
 - External web search (optional later)
 
 ---
@@ -53,6 +52,12 @@
 - **AI Orchestration**: OpenAI Agents SDK
 - **Schemas**: Zod
 - **Deploy**: Docker → Railway
+- **Client persistence**: LocalStorage or IndexedDB for debate history (no server DB for demo)
+
+### Model policy (quality-first)
+- **Jurors + Chief Justice + Evaluator:** `gpt-5.2`
+- **Baseline single model:** `gpt-5-mini`
+- Controlled via env vars: `OPENAI_MODEL`, `OPENAI_BASELINE_MODEL`.
 
 ### Runtime data flow
 - Client sends question + domain to `/api/debate` (POST)
@@ -109,6 +114,7 @@ All agent outputs are validated with Zod.
 - Round transitions visibly marked
 - Elapsed time
 - Responsive layout (stacked on mobile)
+- Debate history view (local-only) with ability to revisit past debates
 
 ---
 
@@ -124,7 +130,7 @@ All agent outputs are validated with Zod.
 
 ## 7) 12‑Factor Compliance
 
-- Config via env vars: `OPENAI_API_KEY`, `OPENAI_MODEL`, `NODE_ENV`, `PORT`
+- Config via env vars: `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASELINE_MODEL`, `NODE_ENV`, `PORT`
 - Logs to stdout (JSON)
 - Stateless process (no DB for demo)
 - Dockerized build & run
@@ -193,6 +199,7 @@ lib/
     headers.ts
 public/
   logo.svg
+openapi.yaml
 Dockerfile
 README.md
 ```
@@ -205,3 +212,22 @@ README.md
 - 500‑char OpenAI usage write‑up
 - 2‑minute demo video
 - Railway deployment URL
+
+---
+
+## 12) Debate History (Client‑Only)
+
+- Store completed debates in LocalStorage or IndexedDB (client‑only).
+- Schema includes: timestamp, domain, query, baseline, positions, critiques, revisions, verdict.
+- Provide a lightweight history panel to list and reload past debates.
+- Keep data size bounded (e.g., last 10–20 debates).
+
+---
+
+## 13) Intelligent Model Routing
+
+- Route queries by domain/complexity to an appropriate model tier.
+- Example policy:
+  - Finance/Legal → higher‑end model
+  - General/simple → cost‑effective model
+- Routing can be a simple heuristic (keyword + domain) for hackathon, with upgrade to classifier later.

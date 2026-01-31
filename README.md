@@ -19,12 +19,17 @@ cp .env.example .env
 
 ```bash
 OPENAI_API_KEY=your_key
-OPENAI_MODEL=gpt-4o
-OPENAI_BASELINE_MODEL=gpt-4o
+OPENAI_MODEL=gpt-5.2
+OPENAI_BASELINE_MODEL=gpt-5-mini
 LOG_LEVEL=debug
 LOG_SAMPLE_RATE=1
 LOG_TRUNCATE_LENGTH=200
 ```
+
+## Model policy (quality-first)
+- **Jurors + Chief Justice + Evaluator:** `gpt-5.2`
+- **Baseline single model:** `gpt-5-mini`
+- Sampling params (like `temperature`) are only sent when the model supports them.
 
 ## Config validation
 Runtime configuration is validated at startup using Zod. Missing or invalid
@@ -69,10 +74,13 @@ curl http://localhost:3000/api/samples
 ## Railway deployment (Docker)
 1. Connect repo in Railway
 2. Select Dockerfile deploy
-3. Set env vars: `OPENAI_API_KEY`, `OPENAI_MODEL`
+3. Set env vars: `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_BASELINE_MODEL`
 
 ## Demo steps
 1. Choose a domain (Finance/Healthcare/Legal/General)
 2. Enter a question and click **Start Debate**
 3. Watch Round 1–3 stream live
-4. Review the Jury Verdict + Comparison panel
+4. Review the Jury Verdict + Comparison panel with evaluator scores
+
+## Suggested demo prompt
+Finance: “Should a fund manager increase NVIDIA exposure given AI regulation uncertainty?”

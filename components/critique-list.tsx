@@ -8,6 +8,8 @@ type Critique = {
 
 type CritiqueListProps = {
   critiques?: Critique[] | null;
+  skipped?: boolean;
+  skipMessage?: string;
 };
 
 const severityClasses: Record<string, string> = {
@@ -16,7 +18,14 @@ const severityClasses: Record<string, string> = {
   major: "border-red-500/40 text-red-200",
 };
 
-export function CritiqueList({ critiques }: CritiqueListProps) {
+export function CritiqueList({ critiques, skipped, skipMessage }: CritiqueListProps) {
+  if (skipped) {
+    return (
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-500">
+        {skipMessage ?? "Round 2 skipped due to high agreement."}
+      </div>
+    );
+  }
   if (!critiques || critiques.length === 0) {
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-500">

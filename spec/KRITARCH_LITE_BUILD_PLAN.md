@@ -35,6 +35,7 @@
 - [x] Add env config validation
 - [x] Add structured logging (dev + prod) with requestId + phase markers
 - [x] Add middleware to inject request IDs and start timestamps
+- [x] Adaptive coordination (agreement detection + conditional critique/revision)
 
 ---
 
@@ -55,6 +56,10 @@
 - [x] Hallucination flag UI
 - [x] Example questions per domain
 - [x] Animation polish (if time)
+- [x] Client-side debate history (LocalStorage/IndexedDB)
+- [x] Evaluator scorecard (baseline vs jury metrics)
+- [x] Demo script updated with evaluator scorecard + candidate prompt
+- [ ] Golden demo question locked (tested & repeatable)
 
 ---
 
@@ -69,9 +74,12 @@
 ---
 
 ## Open Decisions
-- [ ] Final model choice for demo (`gpt-4o` vs `gpt-4o-mini` fallback)
+- [x] Final model choice for demo (quality-first: `gpt-5.2` jury/justice/evaluator, `gpt-5-mini` baseline)
 - [ ] Hallucination flag heuristic (how to compute?)
 - [ ] Final demo question
+- [x] Debate history storage choice (LocalStorage)
+- [x] Evaluator rubric (consistency/specificity/reasoning/coverage)
+- [ ] Routing policy rules (domain/complexity thresholds)
 - [x] Logging format (JSON schema fields: ts, level, message, requestId, route, method, phase, durationMs)
 
 ---
@@ -92,12 +100,19 @@
 - Built Phase 3 streaming UI with round progress, juror panels, verdict panel, and error handling.
 - Added critique and revision panels under each juror and the comparison panel.
 - Added hallucination flags to comparison panel, sample prompts from `/api/samples`, and subtle round reveal transitions.
+- Implemented client-side debate history using LocalStorage with quick reload from history cards.
+- Updated plan status and open decisions to reflect current repo state.
+- Added adaptive coordination with agreement detection and conditional rounds.
+- Added evaluator scorecard to compare baseline vs jury answers.
+- Updated demo script to include a specific finance prompt and evaluator scorecard.
+- Refreshed README and 500-char writeups to include evaluator scorecard and demo prompt.
+- Set model policy to `gpt-5.2` for jury/justice/evaluator and `gpt-5-mini` for baseline; documented across repo.
 
 ---
 
 ## Current Status
-- **Phase 1:** In progress (needs install + run verification)
-- **Phase 2:** In progress (env config validation remaining)
-- **Phase 3:** Not started
-- **Phase 4:** Not started
+- **Phase 1:** In progress (needs dev + Docker run verification)
+- **Phase 2:** Complete
+- **Phase 3:** Complete
+- **Phase 4:** In progress (golden demo question not locked)
 - **Phase 5:** Not started

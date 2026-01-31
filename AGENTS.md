@@ -3,8 +3,7 @@
 ## Project Structure & Module Organization
 - `app/` contains the primary Next.js App Router UI, including `app/page.tsx`, `app/layout.tsx`, and API routes under `app/api/*`.
 - `public/` holds static assets served by Next.js.
-- `spec/` includes product and API documentation (for example, `spec/openapi.yaml`).
-- `web/` is a secondary Next.js app with its own `package.json` and `app/` directory.
+- `spec/` includes product documentation; the API spec lives at the repo root in `openapi.yaml`.
 - Root configs such as `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, and `postcss.config.mjs` apply to the primary app.
 
 ## Build, Test, and Development Commands
@@ -13,7 +12,6 @@
 - `npm run build` creates a production build for the primary app.
 - `npm run start` runs the production build locally.
 - `npm run lint` runs ESLint.
-- For the secondary app: `cd web && npm install`, then `npm run dev|build|start|lint`.
 
 ## Coding Style & Naming Conventions
 - Use TypeScript + React with the Next.js App Router.
@@ -25,10 +23,20 @@
 - No automated test runner is configured in this repository.
 - If you add tests, prefer `__tests__/` folders or `*.test.ts(x)` naming and document the runner you introduce in this file.
 
+## Agent Instructions
+- This repo configures the OpenAI developer docs MCP server in `.codex/config.toml`.
+- Always use the OpenAI developer documentation MCP server if you need to work with the OpenAI API, ChatGPT Apps SDK, Codex, or related docs without me having to explicitly ask.
+- After any code change, run `npm run lint` unless the user explicitly says not to.
+
+## Model Policy & Defaults
+- Quality-first defaults: `OPENAI_MODEL=gpt-5.2`, `OPENAI_BASELINE_MODEL=gpt-5-mini`.
+- Jurors, Chief Justice, and Evaluator use `OPENAI_MODEL`; the Baseline uses `OPENAI_BASELINE_MODEL`.
+- If model policy changes, update `README.md`, `.env.example`, `spec/` docs, and `spec/KRITARCH_LITE_BUILD_PLAN.md` so project memory stays consistent.
+
 ## Commit & Pull Request Guidelines
 - Use Conventional Commits strictly: `type(scope): subject`.
 - Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
-- Use lowercase scope matching the area (`app`, `api`, `web`, `spec`, `deps`).
+- Use lowercase scope matching the area (`app`, `api`, `spec`, `deps`).
 - Examples: `feat(app): add debate status badge`, `fix(api): handle missing domain`, `docs(spec): clarify api schema`.
 - PRs should describe intent, link relevant specs from `spec/`, and include UI screenshots or recordings for user-facing changes.
 

@@ -6,6 +6,7 @@ import {
 } from "@/lib/agents/schemas";
 import type { Domain } from "@/lib/types";
 import { runtimeConfig } from "@/lib/config";
+import { modelSettingsFor } from "@/lib/agents/model-settings";
 
 export type DebateContext = {
   query: string;
@@ -14,63 +15,88 @@ export type DebateContext = {
 
 const MODEL = runtimeConfig.OPENAI_MODEL;
 
-export const jurorA = new Agent<DebateContext>({
+// Reusable instruction functions that work with any output type
+const cautiousAnalystInstructions = (runContext: { context: DebateContext }) =>
+  `You are a rigorous, evidence-driven analyst evaluating a ${runContext.context.domain} question.\n` +
+  "You prioritize data, citations, and established research. You are skeptical of claims that lack empirical support. " +
+  "Identify risks and caveats. Be concise but thorough.";
+
+const devilsAdvocateInstructions = (runContext: { context: DebateContext }) =>
+  `You are a contrarian critical thinker evaluating a ${runContext.context.domain} question.\n` +
+  "Challenge assumptions, surface weaknesses, and test reasoning rigorously. Be provocative but fair.";
+
+const pragmaticExpertInstructions = (runContext: { context: DebateContext }) =>
+  `You are a domain-savvy pragmatist evaluating a ${runContext.context.domain} question.\n` +
+  "Focus on real-world applicability, feasibility, and stakeholder impact.";
+
+export const jurorA = new Agent<DebateContext, typeof JurorPositionSchema>({
   name: "Cautious Analyst",
-  instructions: (runContext) =>
-    `You are a rigorous, evidence-driven analyst evaluating a ${runContext.context.domain} question.\n` +
-    "You prioritize data, citations, and established research. You are skeptical of claims that lack empirical support. " +
-    "Identify risks and caveats. Be concise but thorough.",
+  instructions: cautiousAnalystInstructions,
   model: MODEL,
-  modelSettings: { temperature: 0.3 },
+  modelSettings: modelSettingsFor(MODEL, 0.3),
   outputType: JurorPositionSchema,
 });
 
-export const jurorB = new Agent<DebateContext>({
+export const jurorB = new Agent<DebateContext, typeof JurorPositionSchema>({
   name: "Devil's Advocate",
-  instructions: (runContext) =>
-    `You are a contrarian critical thinker evaluating a ${runContext.context.domain} question.\n` +
-    "Challenge assumptions, surface weaknesses, and test reasoning rigorously. Be provocative but fair.",
+  instructions: devilsAdvocateInstructions,
   model: MODEL,
-  modelSettings: { temperature: 0.7 },
+  modelSettings: modelSettingsFor(MODEL, 0.7),
   outputType: JurorPositionSchema,
 });
 
-export const jurorC = new Agent<DebateContext>({
+export const jurorC = new Agent<DebateContext, typeof JurorPositionSchema>({
   name: "Pragmatic Expert",
-  instructions: (runContext) =>
-    `You are a domain-savvy pragmatist evaluating a ${runContext.context.domain} question.\n` +
-    "Focus on real-world applicability, feasibility, and stakeholder impact.",
+  instructions: pragmaticExpertInstructions,
   model: MODEL,
-  modelSettings: { temperature: 0.5 },
+  modelSettings: modelSettingsFor(MODEL, 0.5),
   outputType: JurorPositionSchema,
 });
 
-export const critiqueAgentA = jurorA.clone({
+export const critiqueAgentA = new Agent<DebateContext, typeof CritiquesOutputSchema>({
   name: "Cautious Analyst (Critique)",
+  instructions: cautiousAnalystInstructions,
+  model: jurorA.model,
+  modelSettings: jurorA.modelSettings,
   outputType: CritiquesOutputSchema,
 });
 
-export const critiqueAgentB = jurorB.clone({
+export const critiqueAgentB = new Agent<DebateContext, typeof CritiquesOutputSchema>({
   name: "Devil's Advocate (Critique)",
+  instructions: devilsAdvocateInstructions,
+  model: jurorB.model,
+  modelSettings: jurorB.modelSettings,
   outputType: CritiquesOutputSchema,
 });
 
-export const critiqueAgentC = jurorC.clone({
+export const critiqueAgentC = new Agent<DebateContext, typeof CritiquesOutputSchema>({
   name: "Pragmatic Expert (Critique)",
+  instructions: pragmaticExpertInstructions,
+  model: jurorC.model,
+  modelSettings: jurorC.modelSettings,
   outputType: CritiquesOutputSchema,
 });
 
-export const revisionAgentA = jurorA.clone({
+export const revisionAgentA = new Agent<DebateContext, typeof RevisedPositionSchema>({
   name: "Cautious Analyst (Revision)",
+  instructions: cautiousAnalystInstructions,
+  model: jurorA.model,
+  modelSettings: jurorA.modelSettings,
   outputType: RevisedPositionSchema,
 });
 
-export const revisionAgentB = jurorB.clone({
+export const revisionAgentB = new Agent<DebateContext, typeof RevisedPositionSchema>({
   name: "Devil's Advocate (Revision)",
+  instructions: devilsAdvocateInstructions,
+  model: jurorB.model,
+  modelSettings: jurorB.modelSettings,
   outputType: RevisedPositionSchema,
 });
 
-export const revisionAgentC = jurorC.clone({
+export const revisionAgentC = new Agent<DebateContext, typeof RevisedPositionSchema>({
   name: "Pragmatic Expert (Revision)",
+  instructions: pragmaticExpertInstructions,
+  model: jurorC.model,
+  modelSettings: jurorC.modelSettings,
   outputType: RevisedPositionSchema,
 });

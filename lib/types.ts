@@ -7,3 +7,12 @@ export const DOMAIN_OPTIONS = [
 
 export type Domain = (typeof DOMAIN_OPTIONS)[number];
 export type JurorId = "A" | "B" | "C";
+
+export type CoordinationDecision = {
+  agreementScore: number;
+  averageConfidence: number;
+  skipCritique: boolean;
+  skipRevision: boolean;
+  rationale: string;
+  disagreementFocus: string[];
+};

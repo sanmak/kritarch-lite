@@ -10,9 +10,18 @@ type RevisedPosition = {
 
 type RevisionPanelProps = {
   revision?: RevisedPosition | null;
+  skipped?: boolean;
+  skipMessage?: string;
 };
 
-export function RevisionPanel({ revision }: RevisionPanelProps) {
+export function RevisionPanel({ revision, skipped, skipMessage }: RevisionPanelProps) {
+  if (skipped) {
+    return (
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-500">
+        {skipMessage ?? "Round 3 skipped due to high agreement."}
+      </div>
+    );
+  }
   if (!revision) {
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-500">
