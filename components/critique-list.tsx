@@ -1,3 +1,5 @@
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 type Critique = {
   targetJuror: string;
   agreements: string[];
@@ -10,6 +12,7 @@ type CritiqueListProps = {
   critiques?: Critique[] | null;
   skipped?: boolean;
   skipMessage?: string;
+  loading?: boolean;
 };
 
 const severityClasses: Record<string, string> = {
@@ -18,17 +21,29 @@ const severityClasses: Record<string, string> = {
   major: "border-red-500/40 text-red-200",
 };
 
-export function CritiqueList({ critiques, skipped, skipMessage }: CritiqueListProps) {
+export function CritiqueList({
+  critiques,
+  skipped,
+  skipMessage,
+  loading,
+}: CritiqueListProps) {
   if (skipped) {
     return (
-      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-500">
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-100">
         {skipMessage ?? "Round 2 skipped due to high agreement."}
+      </div>
+    );
+  }
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+        <LoadingIndicator label="Round 2 in progress" />
       </div>
     );
   }
   if (!critiques || critiques.length === 0) {
     return (
-      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-500">
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-100">
         Critiques will appear here after Round 2.
       </div>
     );
@@ -41,12 +56,12 @@ export function CritiqueList({ critiques, skipped, skipMessage }: CritiqueListPr
           key={`${critique.targetJuror}-${index}`}
           className="rounded-lg border border-zinc-800 bg-zinc-950 p-3"
         >
-          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-            <span className="uppercase text-[10px] tracking-wide text-zinc-500">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-100">
+            <span className="uppercase text-xs tracking-wide text-zinc-500">
               Critique on {critique.targetJuror}
             </span>
             <span
-              className={`rounded-full border px-2 py-0.5 text-[10px] uppercase ${
+              className={`rounded-full border px-2 py-0.5 text-xs uppercase ${
                 severityClasses[critique.overallAssessment] ??
                 "border-zinc-700 text-zinc-300"
               }`}
@@ -54,11 +69,11 @@ export function CritiqueList({ critiques, skipped, skipMessage }: CritiqueListPr
               {critique.overallAssessment}
             </span>
           </div>
-          <div className="mt-2 space-y-2 text-xs text-zinc-300">
+          <div className="mt-2 space-y-2 text-sm text-zinc-300">
             {critique.challenges.map((challenge, idx) => (
               <div key={`${challenge.point}-${idx}`}>
                 <p className="text-zinc-200">• {challenge.point}</p>
-                <p className="text-zinc-500">{challenge.counterargument}</p>
+                <p className="text-zinc-200">{challenge.counterargument}</p>
               </div>
             ))}
           </div>

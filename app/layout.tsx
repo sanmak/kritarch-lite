@@ -16,12 +16,7 @@ const siteName = "Kritarch Lite";
 const siteTitle = "Kritarch Lite - AI Jury";
 const siteDescription =
   "Watch AI models debate, critique, and reach consensus to reduce hallucinations.";
-const baseUrl =
-  process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : "http://localhost:3000";
+const baseUrl = process.env.SITE_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),

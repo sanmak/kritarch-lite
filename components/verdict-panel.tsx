@@ -1,3 +1,5 @@
+import { LoadingIndicator } from "@/components/loading-indicator";
+
 type Verdict = {
   verdict: string;
   agreementScore: number;
@@ -8,27 +10,26 @@ type Verdict = {
 
 export type VerdictPanelProps = {
   verdict?: Verdict | null;
+  loading?: boolean;
 };
 
-export function VerdictPanel({ verdict }: VerdictPanelProps) {
+export function VerdictPanel({ verdict, loading }: VerdictPanelProps) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-      <h3 className="text-sm font-semibold text-white">Jury Verdict</h3>
+      <h3 className="text-lg font-semibold text-white">Jury Verdict</h3>
       {verdict ? (
-        <div className="mt-3 space-y-3 text-sm text-zinc-200">
+        <div className="mt-3 space-y-3 text-base text-zinc-200">
           <p>{verdict.verdict}</p>
-          <div className="flex flex-wrap gap-4 text-xs text-zinc-400">
-            <span>
-              Agreement: {Math.round(verdict.agreementScore * 100)}%
-            </span>
+          <div className="flex flex-wrap gap-4 text-sm text-zinc-100">
+            <span>Agreement: {Math.round(verdict.agreementScore * 100)}%</span>
             <span>
               Confidence: {Math.round(verdict.confidenceScore * 100)}%
             </span>
           </div>
           {verdict.keyAgreements?.length ? (
             <div>
-              <p className="text-xs uppercase text-zinc-500">Key Agreements</p>
-              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-zinc-300">
+              <p className="text-sm uppercase text-zinc-100">Key Agreements</p>
+              <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-zinc-300">
                 {verdict.keyAgreements.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
@@ -37,8 +38,10 @@ export function VerdictPanel({ verdict }: VerdictPanelProps) {
           ) : null}
           {verdict.keyDisagreements?.length ? (
             <div>
-              <p className="text-xs uppercase text-zinc-500">Open Disagreements</p>
-              <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-zinc-300">
+              <p className="text-sm uppercase text-zinc-100">
+                Open Disagreements
+              </p>
+              <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-zinc-300">
                 {verdict.keyDisagreements.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
@@ -46,8 +49,14 @@ export function VerdictPanel({ verdict }: VerdictPanelProps) {
             </div>
           ) : null}
         </div>
+      ) : loading ? (
+        <div className="mt-3">
+          <LoadingIndicator label="Verdict in progress" />
+        </div>
       ) : (
-        <p className="mt-3 text-xs text-zinc-500">Verdict will appear after Round 3.</p>
+        <p className="mt-3 text-sm text-zinc-500">
+          Verdict will appear after Round 3.
+        </p>
       )}
     </div>
   );

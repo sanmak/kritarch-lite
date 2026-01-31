@@ -2,6 +2,13 @@
 
 Kritarch Lite is a real‑time AI adjudication system where multiple AI agents debate, critique each other, and converge on a consensus verdict to reduce hallucinations.
 
+## Live demo
+https://kritarch-lite-production.up.railway.app/
+
+## Name and pronunciation
+- Pronounced: "KRIT-ark lite".
+- Meaning in this project: critique-led adjudication where answers are governed by structured debate, revision, and consensus.
+
 ## Tech stack
 - Next.js (App Router), Tailwind
 - OpenAI Agents SDK + Zod structured outputs
@@ -31,6 +38,9 @@ LOG_TRUNCATE_LENGTH=200
 - **Baseline single model:** `gpt-5-mini`
 - Sampling params (like `temperature`) are only sent when the model supports them.
 
+## Codex memory
+`spec/KRITARCH_LITE_BUILD_PLAN.md` acts as project memory for Codex. Keep it current and concise so Codex can stay aligned across sessions.
+
 ## Config validation
 Runtime configuration is validated at startup using Zod. Missing or invalid
 variables will cause the server to fail fast with a clear error. Use
@@ -51,7 +61,7 @@ docker run -p 3000:3000 -e OPENAI_API_KEY=... kritarch-lite
 ## API
 - `GET /api/health` → `{ "status": "ok" }`
 - `POST /api/debate` → `text/event-stream` SSE
-- `GET /api/samples` → sample prompts (12 total, 4 per domain)
+- `GET /api/samples` → sample prompts (16 total, 4 per domain)
 
 Example:
 ```bash
@@ -83,4 +93,4 @@ curl http://localhost:3000/api/samples
 4. Review the Jury Verdict + Comparison panel with evaluator scores
 
 ## Suggested demo prompt
-Finance: “Should a fund manager increase NVIDIA exposure given AI regulation uncertainty?”
+Legal: "Should AI-generated content be completely banned from use as evidence in US courtrooms?"

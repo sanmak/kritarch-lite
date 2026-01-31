@@ -34,13 +34,21 @@ export function RoundProgress({ phase }: RoundProgressProps) {
       <div className="flex flex-wrap gap-3 text-xs text-zinc-400">
         {PHASES.map((item) => {
           const active = isActiveOrComplete(phase, item.id);
+          const isCurrent = phase === item.id && phase !== "complete";
           return (
             <div key={item.id} className="flex items-center gap-2">
-              <span
-                className={`inline-flex h-2.5 w-2.5 rounded-full ${
-                  active ? "bg-blue-400" : "bg-zinc-700"
-                }`}
-              />
+              {isCurrent ? (
+                <span
+                  className="inline-flex h-2.5 w-2.5 animate-spin rounded-full border border-blue-400 border-t-transparent"
+                  aria-hidden="true"
+                />
+              ) : (
+                <span
+                  className={`inline-flex h-2.5 w-2.5 rounded-full ${
+                    active ? "bg-blue-400" : "bg-zinc-700"
+                  }`}
+                />
+              )}
               <span className={active ? "text-zinc-100" : "text-zinc-500"}>
                 {item.label}
               </span>
