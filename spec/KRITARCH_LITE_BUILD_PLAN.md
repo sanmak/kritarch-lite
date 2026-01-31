@@ -41,20 +41,20 @@
 ## Phase 3 — Streaming UI (HIGH)
 **Outcome:** End‑to‑end debate visible in browser
 
-- [ ] Stream juror deltas to panels
-- [ ] Round progress indicator
-- [ ] Verdict panel rendering
-- [ ] Error state + retry
+- [x] Stream juror deltas to panels
+- [x] Round progress indicator
+- [x] Verdict panel rendering
+- [x] Error state + retry
 
 ---
 
 ## Phase 4 — Comparison + Polish (MEDIUM)
 **Outcome:** “Money shot” demo ready
 
-- [ ] Comparison panel (single vs jury)
-- [ ] Hallucination flag UI
-- [ ] Example questions per domain
-- [ ] Animation polish (if time)
+- [x] Comparison panel (single vs jury)
+- [x] Hallucination flag UI
+- [x] Example questions per domain
+- [x] Animation polish (if time)
 
 ---
 
@@ -89,6 +89,9 @@
 - Added middleware to inject X-Request-Id and request start timestamp for correlation.
 - Added runtime env validation module and wired it into `/api/debate`.
 - Added fail-fast env validation (runtimeConfig), baseline model fallback, and logging env flags.
+- Built Phase 3 streaming UI with round progress, juror panels, verdict panel, and error handling.
+- Added critique and revision panels under each juror and the comparison panel.
+- Added hallucination flags to comparison panel, sample prompts from `/api/samples`, and subtle round reveal transitions.
 
 ---
 
