@@ -1,0 +1,125 @@
+openapi: 3.1.0
+info:
+  title: Kritarch Lite API
+  version: 0.1.0
+  description: |
+    Minimal OpenAPI spec for Phase 1 verification (health + SSE debate stream).
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                required: [status]
+              examples:
+                ok:
+                  value: { status: "ok" }
+  /api/debate:
+    post:
+      summary: Start debate stream
+      description: |
+        Returns Server-Sent Events (SSE). Each event is `data: {json}\n\n`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DebateRequest"
+            examples:
+              sample:
+                value:
+                  query: "Should a fund manager increase NVIDIA exposure given AI regulation uncertainty?"
+                  domain: "finance"
+      responses:
+        "200":
+          description: SSE stream of debate events
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              examples:
+                stream:
+                  value: |
+                    data: {"type":"phase","phase":"baseline"}
+
+                    data: {"type":"baseline","data":{"summary":"Baseline response (mock)."}}
+
+                    data: {"type":"phase","phase":"positions"}
+
+                    data: {"type":"complete"}
+        "400":
+          description: Bad request
+        "500":
+          description: Server error
+  /api/samples:
+    get:
+      summary: List sample questions
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SampleQuestion"
+                  byDomain:
+                    type: object
+                    properties:
+                      finance:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SampleQuestion"
+                      healthcare:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SampleQuestion"
+                      legal:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SampleQuestion"
+                      general:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SampleQuestion"
+                required: [count, items, byDomain]
+components:
+  schemas:
+    DebateRequest:
+      type: object
+      properties:
+        query:
+          type: string
+        domain:
+          type: string
+          enum: [finance, healthcare, legal, general]
+      required: [query, domain]
+    SampleQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+        domain:
+          type: string
+          enum: [finance, healthcare, legal, general]
+        prompt:
+          type: string
+        difficulty:
+          type: string
+          enum: [hard]
+      required: [id, domain, prompt, difficulty]

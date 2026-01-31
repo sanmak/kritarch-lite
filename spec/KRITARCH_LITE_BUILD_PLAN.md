@@ -1,0 +1,100 @@
+# Kritarch Lite — Phase Plan (1–5) + Session Memory
+
+**Last updated:** 2026-01-31
+**Purpose:** Single source of truth for status, decisions, and next steps across sessions.
+
+---
+
+## How to use this file (Codex 2026 memory best‑practice)
+- Update **Last updated** each session.
+- Check off items as you complete them.
+- Add a short entry to **Work Log** with what changed and where.
+- Keep **Open Decisions** current.
+
+---
+
+## Phase 1 — Scaffold + Core API (CRITICAL)
+**Outcome:** Next.js app runs locally + Docker builds + SSE endpoint streams mock events
+
+- [x] Initialize Next.js app (App Router, Tailwind)
+- [x] Add Dockerfile (multi‑stage, Node LTS)
+- [x] Add `/api/health` endpoint
+- [x] Add `/api/debate` SSE endpoint (mock events)
+- [x] Basic UI shell in `app/page.tsx`
+- [ ] Verify `npm run dev` and `docker run` work
+
+---
+
+## Phase 2 — Agents + Orchestration (CRITICAL)
+**Outcome:** Debate engine runs with real OpenAI calls
+
+- [x] Add Zod schemas in `lib/agents/schemas.ts`
+- [x] Add juror agents + chief justice
+- [x] Implement `lib/debate-engine.ts`
+- [x] Wire `/api/debate` to real debate engine
+- [x] Add env config validation
+- [x] Add structured logging (dev + prod) with requestId + phase markers
+- [x] Add middleware to inject request IDs and start timestamps
+
+---
+
+## Phase 3 — Streaming UI (HIGH)
+**Outcome:** End‑to‑end debate visible in browser
+
+- [ ] Stream juror deltas to panels
+- [ ] Round progress indicator
+- [ ] Verdict panel rendering
+- [ ] Error state + retry
+
+---
+
+## Phase 4 — Comparison + Polish (MEDIUM)
+**Outcome:** “Money shot” demo ready
+
+- [ ] Comparison panel (single vs jury)
+- [ ] Hallucination flag UI
+- [ ] Example questions per domain
+- [ ] Animation polish (if time)
+
+---
+
+## Phase 5 — Deploy + Submission (CRITICAL)
+**Outcome:** Ready for judging
+
+- [ ] Deploy to Railway (Docker)
+- [ ] README finalized
+- [ ] 500‑char write‑ups finalized
+- [ ] 2‑minute demo video recorded
+
+---
+
+## Open Decisions
+- [ ] Final model choice for demo (`gpt-4o` vs `gpt-4o-mini` fallback)
+- [ ] Hallucination flag heuristic (how to compute?)
+- [ ] Final demo question
+- [x] Logging format (JSON schema fields: ts, level, message, requestId, route, method, phase, durationMs)
+
+---
+
+## Work Log
+**2026-01-31**
+- Added final spec and phase plan docs in `spec/`.
+- Scaffolded Next.js app at repo root, added Dockerfile, SSE API routes, and UI shell.
+- Attempted `npm install` at repo root; timed out. Node_modules partially created, no lockfile yet.
+- Cleaned `node_modules` and completed `npm install` successfully.
+- Wired Agents SDK + Zod schemas, added debate engine, security headers, and rate limiting scaffolds.
+- Installed `@openai/agents`, `openai`, and `zod` dependencies.
+- Added `/api/samples` endpoint with 12 hard demo questions (4 per domain).
+- Implemented structured logging utility and added request/phase logs to API routes and debate engine.
+- Added middleware to inject X-Request-Id and request start timestamp for correlation.
+- Added runtime env validation module and wired it into `/api/debate`.
+- Added fail-fast env validation (runtimeConfig), baseline model fallback, and logging env flags.
+
+---
+
+## Current Status
+- **Phase 1:** In progress (needs install + run verification)
+- **Phase 2:** In progress (env config validation remaining)
+- **Phase 3:** Not started
+- **Phase 4:** Not started
+- **Phase 5:** Not started
