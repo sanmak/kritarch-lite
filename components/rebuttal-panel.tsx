@@ -21,7 +21,11 @@ export function RebuttalPanel({ rebuttal, loading }: RebuttalPanelProps) {
     );
   }
   if (!rebuttal) {
-    return null;
+    return (
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-100">
+        Rebuttals will appear here after Round 2.5.
+      </div>
+    );
   }
 
   return (

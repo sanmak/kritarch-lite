@@ -19,6 +19,7 @@ Kritarch Lite is designed for high-stakes domains where a single-model answer is
 
 - **Command-center roster:** introduces the three specialists (Cautious Analyst, Devil's Advocate, Pragmatic Expert).
 - **Jury chamber:** explains how the Chief Justice synthesizes a final verdict.
+- **Round-first reader view:** round tabs with keyboard navigation, jump links, compact mode, and per-juror expand focus.
 - **Jury Verdict payload:** Verdict, Key evidence, Risk flags, and Next actions, plus agreement/confidence.
 - **Baselines vs Jury:** side-by-side single-model baselines with a structured, decision-ready jury output.
 - **Domain suggestion:** keyword-based detection suggests a likely domain and lets the user apply it.
@@ -96,6 +97,9 @@ flowchart TD
 | **Chief Justice**     | Aggregates juror outputs into the final verdict                                                                                       |
 | **Key evidence**      | Evidence points supporting the verdict                                                                                                |
 | **Next actions**      | Concrete follow-up steps to move the decision forward                                                                                |
+| **Position**          | Juror stance: support, oppose, or nuanced                                                                                             |
+| **Critique assessment** | Overall assessment of a juror's position: strong, moderate, weak                                                                     |
+| **Critique severity** | Per-issue severity tags: minor, moderate, major                                                                                        |
 | **Fast-track**        | Coordination mode that skips critique and revision when agreement is high                                                             |
 | **Standard mode**     | Default coordination path with critique and revision rounds                                                                           |
 | **Deep deliberation** | Extra-thorough mode triggered by low agreement (< 40%); adds a rebuttal round                                                         |

@@ -16,8 +16,10 @@ type CritiqueListProps = {
 };
 
 const severityClasses: Record<string, string> = {
+  strong: "border-emerald-500/40 text-emerald-200",
   minor: "border-blue-500/40 text-blue-200",
   moderate: "border-amber-500/40 text-amber-200",
+  weak: "border-red-500/40 text-red-200",
   major: "border-red-500/40 text-red-200",
 };
 
@@ -68,11 +70,27 @@ export function CritiqueList({
             >
               {critique.overallAssessment}
             </span>
+            <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] uppercase text-zinc-400">
+              Overall assessment
+            </span>
           </div>
           <div className="mt-2 space-y-2 text-sm text-zinc-300">
             {critique.challenges.map((challenge, idx) => (
               <div key={`${challenge.point}-${idx}`}>
-                <p className="text-zinc-200">• {challenge.point}</p>
+                <div className="flex flex-wrap items-center gap-2 text-zinc-200">
+                  <span>• {challenge.point}</span>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] uppercase ${
+                      severityClasses[challenge.severity] ??
+                      "border-zinc-700 text-zinc-300"
+                    }`}
+                  >
+                    {challenge.severity}
+                  </span>
+                  <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] uppercase text-zinc-400">
+                    Issue severity
+                  </span>
+                </div>
                 <p className="text-zinc-200">{challenge.counterargument}</p>
               </div>
             ))}

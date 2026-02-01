@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import type {
   BaselineOutput,
   ConsensusVerdict,
@@ -67,6 +68,21 @@ const GLOSSARY_TERMS: GlossaryTerm[] = [
     id: "critique",
     term: "Critique",
     description: "Round 2 where jurors challenge each other's positions.",
+  },
+  {
+    id: "position",
+    term: "Position",
+    description: "Juror stance: support, oppose, or nuanced.",
+  },
+  {
+    id: "critique-assessment",
+    term: "Critique assessment",
+    description: "Overall verdict on a juror's position: strong, moderate, weak.",
+  },
+  {
+    id: "critique-severity",
+    term: "Critique severity",
+    description: "Per-issue severity tags: minor, moderate, major.",
   },
   {
     id: "revision",
@@ -255,6 +271,32 @@ const AGENT_PROFILES: AgentProfile[] = [
   },
 ];
 
+const JUROR_TABS: {
+  id: JurorId;
+  label: string;
+  subtitle: string;
+  accentClass: string;
+}[] = [
+  {
+    id: "A",
+    label: "Juror A",
+    subtitle: "Cautious Analyst",
+    accentClass: "bg-blue-400",
+  },
+  {
+    id: "B",
+    label: "Juror B",
+    subtitle: "Devil's Advocate",
+    accentClass: "bg-red-400",
+  },
+  {
+    id: "C",
+    label: "Juror C",
+    subtitle: "Pragmatic Expert",
+    accentClass: "bg-emerald-400",
+  },
+];
+
 const JURY_PROTOCOLS = [
   "Consensus synthesis with dissent flags.",
   "Confidence-weighted verdict framing.",
@@ -432,6 +474,8 @@ type DebatePhase =
   | "complete"
   | "error";
 
+type RoundTab = "positions" | "critiques" | "rebuttals" | "revisions";
+
 type DebateState = {
   phase: DebatePhase;
   jurorStreams: Record<JurorId, string>;
@@ -514,10 +558,27 @@ export default function Home() {
   const [safetyNotice, setSafetyNotice] = useState<SafetyNotice | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [finalElapsed, setFinalElapsed] = useState<number | null>(null);
+  const [activeRound, setActiveRound] = useState<RoundTab>("positions");
+  const [roundPinned, setRoundPinned] = useState(false);
+  const [expandedJuror, setExpandedJuror] = useState<JurorId | null>(null);
+  const [compactRounds, setCompactRounds] = useState(false);
   const lastSavedId = useRef<string | null>(null);
   const skipNextSaveRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
   const progressRef = useRef<HTMLDivElement | null>(null);
+  const roundsRef = useRef<HTMLDivElement | null>(null);
+  const roundTabRefs = useRef<Record<RoundTab, HTMLButtonElement | null>>({
+    positions: null,
+    critiques: null,
+    rebuttals: null,
+    revisions: null,
+  });
+  const roundPanelRefs = useRef<Record<RoundTab, HTMLDivElement | null>>({
+    positions: null,
+    critiques: null,
+    rebuttals: null,
+    revisions: null,
+  });
   const suggestionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const HISTORY_KEY = "kritarch-lite:history";
@@ -580,6 +641,43 @@ export default function Home() {
       }
     };
   }, [query, domain]);
+
+  useEffect(() => {
+    if (roundPinned) return;
+    if (state.phase === "critique") {
+      setActiveRound("critiques");
+      return;
+    }
+    if (state.phase === "rebuttal") {
+      setActiveRound("rebuttals");
+      return;
+    }
+    if (state.phase === "revision") {
+      setActiveRound("revisions");
+      return;
+    }
+    if (state.phase === "positions" || state.phase === "baseline") {
+      setActiveRound("positions");
+    }
+  }, [state.phase, roundPinned]);
+
+  useEffect(() => {
+    setExpandedJuror(null);
+  }, [activeRound]);
+
+  useEffect(() => {
+    if (compactRounds) {
+      setExpandedJuror(null);
+    }
+  }, [compactRounds]);
+
+  useEffect(() => {
+    if (state.coordination?.deepDeliberation) return;
+    if (activeRound === "rebuttals") {
+      setActiveRound("positions");
+      setRoundPinned(false);
+    }
+  }, [activeRound, state.coordination?.deepDeliberation]);
 
   useEffect(() => {
     try {
@@ -725,6 +823,9 @@ export default function Home() {
       setPrimaryModel(entry.primaryModel);
     }
     setQuery(entry.query);
+    setActiveRound("positions");
+    setRoundPinned(false);
+    setExpandedJuror(null);
     setState({
       phase: "complete",
       jurorStreams: { A: "", B: "", C: "" },
@@ -749,6 +850,9 @@ export default function Home() {
     setElapsed(0);
     setFinalElapsed(null);
     skipNextSaveRef.current = false;
+    setActiveRound("positions");
+    setRoundPinned(false);
+    setExpandedJuror(null);
     const startedAt = Date.now();
     startTimeRef.current = startedAt;
     setState({ ...initialState, phase: "baseline", startTime: startedAt });
@@ -985,6 +1089,505 @@ export default function Home() {
   const jurorCMeta = getUsageMeta("jurorC");
   const verdictMeta = getUsageMeta("verdict");
   const evaluatorMeta = getUsageMeta("evaluator");
+  const jurorMetaById = {
+    A: jurorAMeta,
+    B: jurorBMeta,
+    C: jurorCMeta,
+  } as const;
+
+  const roundTabs = [
+    { id: "positions", label: "Round 1", title: "Positions", hidden: false },
+    { id: "critiques", label: "Round 2", title: "Critiques", hidden: false },
+    {
+      id: "rebuttals",
+      label: "Round 2.5",
+      title: "Rebuttals",
+      hidden: !state.coordination?.deepDeliberation,
+    },
+    { id: "revisions", label: "Round 3", title: "Revisions", hidden: false },
+  ] as const satisfies { id: RoundTab; label: string; title: string; hidden?: boolean }[];
+  const visibleRoundTabs = roundTabs.filter((tab) => !tab.hidden);
+
+  const getRoundStatus = (tabId: RoundTab) => {
+    if (tabId === "positions") {
+      if (state.phase === "positions") return "Live";
+      if (state.positions) return "Complete";
+      return null;
+    }
+    if (tabId === "critiques") {
+      if (state.coordination?.skipCritique) return "Skipped";
+      if (state.phase === "critique") return "Live";
+      if (state.critiques) return "Complete";
+      return null;
+    }
+    if (tabId === "rebuttals") {
+      if (!state.coordination?.deepDeliberation) return "Skipped";
+      if (state.phase === "rebuttal") return "Live";
+      if (state.rebuttals) return "Complete";
+      return null;
+    }
+    if (tabId === "revisions") {
+      if (state.coordination?.skipRevision) return "Skipped";
+      if (state.phase === "revision") return "Live";
+      if (state.revisions) return "Complete";
+      return null;
+    }
+    return null;
+  };
+
+  const roundStatusClass = (status: string | null) => {
+    if (!status) return "border-zinc-700 text-zinc-400";
+    if (status === "Live") return "border-blue-500/40 text-blue-200";
+    if (status === "Complete") return "border-emerald-500/40 text-emerald-200";
+    return "border-zinc-700 text-zinc-400";
+  };
+
+  const renderJurorHeader = (
+    tab: (typeof JUROR_TABS)[number],
+    actions?: ReactNode,
+  ) => (
+    <div className="flex items-center justify-between gap-2">
+      <div>
+        <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+          {tab.label}
+        </p>
+        <p className="text-sm font-semibold text-zinc-100">{tab.subtitle}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        {actions}
+        <span className={`h-2 w-2 rounded-full ${tab.accentClass}`} />
+      </div>
+    </div>
+  );
+
+  const renderExpandButton = (jurorId: JurorId) => {
+    if (compactRounds) return null;
+    const isExpanded = expandedJuror === jurorId;
+    return (
+      <button
+        type="button"
+        onClick={() => setExpandedJuror(isExpanded ? null : jurorId)}
+        className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] uppercase text-zinc-300 hover:border-zinc-500"
+      >
+        {isExpanded ? "Show all" : "Expand"}
+      </button>
+    );
+  };
+
+  const jumpToRound = (tabId: RoundTab) => {
+    setActiveRound(tabId);
+    setRoundPinned(true);
+    requestAnimationFrame(() => {
+      const target = roundPanelRefs.current[tabId] ?? roundsRef.current;
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const handleRoundKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    tabId: RoundTab,
+  ) => {
+    const keys = ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"];
+    if (!keys.includes(event.key)) return;
+    event.preventDefault();
+    const ids = visibleRoundTabs.map((tab) => tab.id);
+    const currentIndex = ids.indexOf(tabId);
+    if (currentIndex === -1) return;
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % ids.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + ids.length) % ids.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = ids.length - 1;
+    }
+    const nextId = ids[nextIndex];
+    setActiveRound(nextId);
+    setRoundPinned(true);
+    roundTabRefs.current[nextId]?.focus();
+  };
+
+  const renderCompactCard = (tab: (typeof JUROR_TABS)[number], tabId: RoundTab) => {
+    if (tabId === "positions") {
+      const position = state.positions?.[tab.id];
+      return (
+        <div
+          key={`compact-${tabId}-${tab.id}`}
+          className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+        >
+          {renderJurorHeader(tab)}
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-zinc-400">
+            {position?.position ? (
+              <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] uppercase text-zinc-200">
+                {position.position}
+              </span>
+            ) : (
+              <span className="text-[10px] uppercase text-zinc-500">
+                Awaiting stance
+              </span>
+            )}
+            {typeof position?.confidence === "number" ? (
+              <span className="text-[10px] uppercase text-zinc-400">
+                Conf {Math.round(position.confidence * 100)}%
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-sm text-zinc-200">
+            {position?.summary ?? "Awaiting position summary…"}
+          </p>
+        </div>
+      );
+    }
+
+    if (tabId === "critiques") {
+      if (state.coordination?.skipCritique) {
+        return (
+          <div
+            key={`compact-${tabId}-${tab.id}`}
+            className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+          >
+            {renderJurorHeader(tab)}
+            <p className="mt-2 text-xs text-zinc-400">
+              Skipped due to high agreement.
+            </p>
+          </div>
+        );
+      }
+      if (critiquesLoading) {
+        return (
+          <div
+            key={`compact-${tabId}-${tab.id}`}
+            className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+          >
+            {renderJurorHeader(tab)}
+            <p className="mt-2 text-xs text-zinc-400">Loading critiques…</p>
+          </div>
+        );
+      }
+      const critiques = state.critiques?.[tab.id] ?? [];
+      const assessments = Array.from(
+        new Set(critiques.map((item) => item.overallAssessment)),
+      ).slice(0, 3);
+      const issueCount = critiques.reduce(
+        (total, item) => total + item.challenges.length,
+        0,
+      );
+      return (
+        <div
+          key={`compact-${tabId}-${tab.id}`}
+          className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+        >
+          {renderJurorHeader(tab)}
+          <div className="mt-2 text-xs text-zinc-400">
+            {critiques.length} critique{critiques.length === 1 ? "" : "s"} ·{" "}
+            {issueCount} issue{issueCount === 1 ? "" : "s"}
+          </div>
+          {assessments.length ? (
+            <div className="mt-2 flex flex-wrap gap-2 text-[10px] uppercase text-zinc-400">
+              {assessments.map((assessment) => (
+                <span
+                  key={assessment}
+                  className="rounded-full border border-zinc-700 px-2 py-0.5 text-zinc-300"
+                >
+                  {assessment}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-zinc-400">No critiques yet.</p>
+          )}
+        </div>
+      );
+    }
+
+    if (tabId === "rebuttals") {
+      if (rebuttalsLoading) {
+        return (
+          <div
+            key={`compact-${tabId}-${tab.id}`}
+            className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+          >
+            {renderJurorHeader(tab)}
+            <p className="mt-2 text-xs text-zinc-400">Loading rebuttal…</p>
+          </div>
+        );
+      }
+      const rebuttal = state.rebuttals?.[tab.id];
+      return (
+        <div
+          key={`compact-${tabId}-${tab.id}`}
+          className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+        >
+          {renderJurorHeader(tab)}
+          <p className="mt-2 text-xs text-zinc-400">
+            Refined: {rebuttal?.refinedPosition ?? "Pending"}
+          </p>
+          {rebuttal?.refinedSummary ? (
+            <p className="mt-2 text-sm text-zinc-200">
+              {rebuttal.refinedSummary}
+            </p>
+          ) : null}
+        </div>
+      );
+    }
+
+    if (tabId === "revisions") {
+      if (state.coordination?.skipRevision) {
+        return (
+          <div
+            key={`compact-${tabId}-${tab.id}`}
+            className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+          >
+            {renderJurorHeader(tab)}
+            <p className="mt-2 text-xs text-zinc-400">
+              Skipped due to coordination.
+            </p>
+          </div>
+        );
+      }
+      if (revisionsLoading) {
+        return (
+          <div
+            key={`compact-${tabId}-${tab.id}`}
+            className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+          >
+            {renderJurorHeader(tab)}
+            <p className="mt-2 text-xs text-zinc-400">Loading revisions…</p>
+          </div>
+        );
+      }
+      const revision = state.revisions?.[tab.id];
+      return (
+        <div
+          key={`compact-${tabId}-${tab.id}`}
+          className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200"
+        >
+          {renderJurorHeader(tab)}
+          <p className="mt-2 text-xs text-zinc-400">
+            Revised: {revision?.originalPosition ?? "—"} →{" "}
+            {revision?.revisedPosition ?? "—"}
+          </p>
+          {revision?.summary ? (
+            <p className="mt-2 text-sm text-zinc-200">{revision.summary}</p>
+          ) : null}
+        </div>
+      );
+    }
+
+    return null;
+  };
+
+  const renderRoundContent = (tabId: RoundTab) => {
+    const jurorsToRender = expandedJuror
+      ? JUROR_TABS.filter((tab) => tab.id === expandedJuror)
+      : JUROR_TABS;
+    const expandedLabel = expandedJuror
+      ? JUROR_TABS.find((tab) => tab.id === expandedJuror)?.label
+      : null;
+    const gridClass = expandedJuror
+      ? "grid gap-4"
+      : "grid gap-4 md:grid-cols-2 xl:grid-cols-3";
+    const expandedBanner = expandedJuror ? (
+      <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-sm text-blue-100">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span>
+            Focused view: <span className="font-semibold">{expandedLabel}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setExpandedJuror(null)}
+            className="rounded-full border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-blue-100"
+          >
+            Show all jurors
+          </button>
+        </div>
+      </div>
+    ) : null;
+    if (tabId === "positions") {
+      return (
+        <div className="space-y-4">
+          {expandedBanner}
+          {compactRounds ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {JUROR_TABS.map((tab) => renderCompactCard(tab, "positions"))}
+            </div>
+          ) : null}
+          {!expandedJuror ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {JUROR_TABS.map((tab) => {
+                const position = state.positions?.[tab.id];
+                const summary =
+                  position?.summary ?? "Awaiting position summary…";
+                return (
+                  <div
+                    key={`summary-${tab.id}`}
+                    className="rounded-lg border border-zinc-800 bg-zinc-950 p-3"
+                  >
+                    {renderJurorHeader(tab)}
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-zinc-400">
+                      {position?.position ? (
+                        <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] uppercase text-zinc-200">
+                          {position.position}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] uppercase text-zinc-500">
+                          Awaiting stance
+                        </span>
+                      )}
+                      {typeof position?.confidence === "number" ? (
+                        <span className="text-[10px] uppercase text-zinc-400">
+                          Conf {Math.round(position.confidence * 100)}%
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-sm text-zinc-200">{summary}</p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+          {!compactRounds ? (
+            <div className={gridClass}>
+              {jurorsToRender.map((tab) => {
+                const meta = jurorMetaById[tab.id];
+                const position = state.positions?.[tab.id];
+                return (
+                  <JurorPanel
+                    key={tab.id}
+                    title={tab.label}
+                    subtitle={tab.subtitle}
+                    accentClass={tab.accentClass}
+                    streamText={state.jurorStreams[tab.id]}
+                    position={position?.position}
+                    confidence={position?.confidence}
+                    model={meta?.model}
+                    costUsd={meta?.costUsd}
+                    inputTokens={meta?.inputTokens}
+                    outputTokens={meta?.outputTokens}
+                    totalTokens={meta?.totalTokens}
+                    loading={positionsLoading}
+                    loadingLabel="Round 1 in progress"
+                    actions={renderExpandButton(tab.id)}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-400">
+              Compact view hides full reasoning. Disable compact view to read
+              long-form juror outputs.
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (tabId === "critiques") {
+      if (compactRounds) {
+        return (
+          <div className="space-y-4">
+            {expandedBanner}
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {JUROR_TABS.map((tab) => renderCompactCard(tab, "critiques"))}
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className="space-y-4">
+          {expandedBanner}
+          <div className={gridClass}>
+          {jurorsToRender.map((tab) => (
+            <div
+              key={tab.id}
+              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+            >
+              {renderJurorHeader(tab, renderExpandButton(tab.id))}
+              <div className="mt-3">
+                <CritiqueList
+                  critiques={state.critiques?.[tab.id]}
+                  skipped={state.coordination?.skipCritique}
+                  skipMessage={critiqueSkipMessage}
+                  loading={critiquesLoading}
+                />
+              </div>
+            </div>
+          ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (tabId === "rebuttals") {
+      if (compactRounds) {
+        return (
+          <div className="space-y-4">
+            {expandedBanner}
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {JUROR_TABS.map((tab) => renderCompactCard(tab, "rebuttals"))}
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className="space-y-4">
+          {expandedBanner}
+          <div className={gridClass}>
+            {jurorsToRender.map((tab) => (
+              <div
+                key={tab.id}
+                className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+              >
+                {renderJurorHeader(tab, renderExpandButton(tab.id))}
+                <div className="mt-3">
+                  <RebuttalPanel
+                    rebuttal={state.rebuttals?.[tab.id]}
+                    loading={rebuttalsLoading}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (compactRounds) {
+      return (
+        <div className="space-y-4">
+          {expandedBanner}
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {JUROR_TABS.map((tab) => renderCompactCard(tab, "revisions"))}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-4">
+        {expandedBanner}
+        <div className={gridClass}>
+          {jurorsToRender.map((tab) => (
+            <div
+              key={tab.id}
+              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+            >
+              {renderJurorHeader(tab, renderExpandButton(tab.id))}
+              <div className="mt-3">
+                <RevisionPanel
+                  revision={state.revisions?.[tab.id]}
+                  skipped={state.coordination?.skipRevision}
+                  skipMessage={revisionSkipMessage}
+                  loading={revisionsLoading}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const costSummaryItems = [
     {
@@ -1607,135 +2210,162 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="flex flex-col gap-4">
-            <div className="transition-all duration-500 ease-out">
-              <JurorPanel
-                title="Juror A"
-                subtitle="Cautious Analyst"
-                accentClass="bg-blue-400"
-                streamText={state.jurorStreams.A}
-                position={state.positions?.A.position}
-                confidence={state.positions?.A.confidence}
-                model={jurorAMeta?.model}
-                costUsd={jurorAMeta?.costUsd}
-                inputTokens={jurorAMeta?.inputTokens}
-                outputTokens={jurorAMeta?.outputTokens}
-                totalTokens={jurorAMeta?.totalTokens}
-                loading={positionsLoading}
-                loadingLabel="Round 1 in progress"
-              />
+        <section
+          ref={roundsRef}
+          aria-labelledby="rounds-heading"
+          className="rounded-xl border border-zinc-800 bg-zinc-900 p-5"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2
+                id="rounds-heading"
+                className="text-sm font-semibold uppercase tracking-[0.3em] text-zinc-200"
+              >
+                Debate rounds
+              </h2>
+              <p className="mt-1 text-sm text-zinc-100">
+                Compare all jurors within each round to trace convergence and
+                dissent.
+              </p>
             </div>
-            <div className="transition-all duration-500 ease-out">
-              <CritiqueList
-                critiques={state.critiques?.A}
-                skipped={state.coordination?.skipCritique}
-                skipMessage={critiqueSkipMessage}
-                loading={critiquesLoading}
-              />
-            </div>
-            {state.coordination?.deepDeliberation ? (
-              <div className="transition-all duration-500 ease-out">
-                <RebuttalPanel
-                  rebuttal={state.rebuttals?.A}
-                  loading={rebuttalsLoading}
-                />
-              </div>
-            ) : null}
-            <div className="transition-all duration-500 ease-out">
-              <RevisionPanel
-                revision={state.revisions?.A}
-                skipped={state.coordination?.skipRevision}
-                skipMessage={revisionSkipMessage}
-                loading={revisionsLoading}
-              />
-            </div>
-          </div>
-          <div className="flex flex-col gap-4">
-            <div className="transition-all duration-500 ease-out">
-              <JurorPanel
-                title="Juror B"
-                subtitle="Devil's Advocate"
-                accentClass="bg-red-400"
-                streamText={state.jurorStreams.B}
-                position={state.positions?.B.position}
-                confidence={state.positions?.B.confidence}
-                model={jurorBMeta?.model}
-                costUsd={jurorBMeta?.costUsd}
-                inputTokens={jurorBMeta?.inputTokens}
-                outputTokens={jurorBMeta?.outputTokens}
-                totalTokens={jurorBMeta?.totalTokens}
-                loading={positionsLoading}
-                loadingLabel="Round 1 in progress"
-              />
-            </div>
-            <div className="transition-all duration-500 ease-out">
-              <CritiqueList
-                critiques={state.critiques?.B}
-                skipped={state.coordination?.skipCritique}
-                skipMessage={critiqueSkipMessage}
-                loading={critiquesLoading}
-              />
-            </div>
-            {state.coordination?.deepDeliberation ? (
-              <div className="transition-all duration-500 ease-out">
-                <RebuttalPanel
-                  rebuttal={state.rebuttals?.B}
-                  loading={rebuttalsLoading}
-                />
-              </div>
-            ) : null}
-            <div className="transition-all duration-500 ease-out">
-              <RevisionPanel
-                revision={state.revisions?.B}
-                skipped={state.coordination?.skipRevision}
-                skipMessage={revisionSkipMessage}
-                loading={revisionsLoading}
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCompactRounds((prev) => !prev)}
+                aria-pressed={compactRounds}
+                className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                  compactRounds
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                    : "border-zinc-700 text-zinc-300"
+                }`}
+              >
+                {compactRounds ? "Compact on" : "Compact off"}
+              </button>
+              {roundPinned ? (
+                <button
+                  type="button"
+                  onClick={() => setRoundPinned(false)}
+                  className="rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-blue-200"
+                >
+                  Follow live round
+                </button>
+              ) : (
+                <span className="text-xs text-zinc-400">
+                  Auto-following live round
+                </span>
+              )}
             </div>
           </div>
-          <div className="flex flex-col gap-4">
-            <div className="transition-all duration-500 ease-out">
-              <JurorPanel
-                title="Juror C"
-                subtitle="Pragmatic Expert"
-                accentClass="bg-emerald-400"
-                streamText={state.jurorStreams.C}
-                position={state.positions?.C.position}
-                confidence={state.positions?.C.confidence}
-                model={jurorCMeta?.model}
-                costUsd={jurorCMeta?.costUsd}
-                inputTokens={jurorCMeta?.inputTokens}
-                outputTokens={jurorCMeta?.outputTokens}
-                totalTokens={jurorCMeta?.totalTokens}
-                loading={positionsLoading}
-                loadingLabel="Round 1 in progress"
-              />
-            </div>
-            <div className="transition-all duration-500 ease-out">
-              <CritiqueList
-                critiques={state.critiques?.C}
-                skipped={state.coordination?.skipCritique}
-                skipMessage={critiqueSkipMessage}
-                loading={critiquesLoading}
-              />
-            </div>
-            {state.coordination?.deepDeliberation ? (
-              <div className="transition-all duration-500 ease-out">
-                <RebuttalPanel
-                  rebuttal={state.rebuttals?.C}
-                  loading={rebuttalsLoading}
-                />
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+            <span className="uppercase tracking-[0.3em] text-zinc-500">
+              Jump to round
+            </span>
+            {visibleRoundTabs.map((tab) => (
+              <a
+                key={`jump-${tab.id}`}
+                href={`#round-${tab.id}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  jumpToRound(tab.id);
+                }}
+                className="rounded-full border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-300 hover:border-zinc-600"
+              >
+                {tab.label}
+              </a>
+            ))}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+            <span className="uppercase tracking-[0.3em] text-zinc-500">
+              Round status
+            </span>
+            {visibleRoundTabs.map((tab) => {
+              const status = getRoundStatus(tab.id);
+              return (
+                <span
+                  key={`status-${tab.id}`}
+                  className={`rounded-full border px-2 py-0.5 text-[10px] uppercase ${roundStatusClass(
+                    status,
+                  )}`}
+                >
+                  {tab.label} {status ?? "Pending"}
+                </span>
+              );
+            })}
+          </div>
+
+          <div
+            role="tablist"
+            aria-label="Round selection"
+            className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
+          >
+            {visibleRoundTabs.map((tab) => {
+              const isActive = activeRound === tab.id;
+              const status = getRoundStatus(tab.id);
+              return (
+                <button
+                  key={tab.id}
+                  id={`round-tab-${tab.id}`}
+                  role="tab"
+                  aria-selected={isActive}
+                  aria-controls={`round-${tab.id}`}
+                  tabIndex={isActive ? 0 : -1}
+                  type="button"
+                  ref={(node) => {
+                    roundTabRefs.current[tab.id] = node;
+                  }}
+                  onClick={() => {
+                    setActiveRound(tab.id);
+                    setRoundPinned(true);
+                  }}
+                  onKeyDown={(event) => handleRoundKeyDown(event, tab.id)}
+                  className={`rounded-lg border px-3 py-2 text-left transition ${
+                    isActive
+                      ? "border-blue-400 bg-blue-500/10 text-blue-100"
+                      : "border-zinc-800 bg-zinc-950 text-zinc-100 hover:border-zinc-600"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-zinc-400">
+                        {tab.label}
+                      </p>
+                      <p className="text-sm font-semibold text-zinc-100">
+                        {tab.title}
+                      </p>
+                    </div>
+                    {status ? (
+                      <span
+                        className={`rounded-full border px-2 py-0.5 text-[10px] uppercase ${roundStatusClass(
+                          status,
+                        )}`}
+                      >
+                        {status}
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4">
+            {visibleRoundTabs.map((tab) => (
+              <div
+                key={tab.id}
+                id={`round-${tab.id}`}
+                role="tabpanel"
+                aria-labelledby={`round-tab-${tab.id}`}
+                hidden={activeRound !== tab.id}
+                className={activeRound === tab.id ? "block" : "hidden"}
+                ref={(node) => {
+                  roundPanelRefs.current[tab.id] = node;
+                }}
+              >
+                {renderRoundContent(tab.id)}
               </div>
-            ) : null}
-            <div className="transition-all duration-500 ease-out">
-              <RevisionPanel
-                revision={state.revisions?.C}
-                skipped={state.coordination?.skipRevision}
-                skipMessage={revisionSkipMessage}
-                loading={revisionsLoading}
-              />
-            </div>
+            ))}
           </div>
         </section>
 

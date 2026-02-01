@@ -31,6 +31,7 @@
 
 ## Product & UI Notes
 - Command-center roster introduces the three jurors (Cautious Analyst, Devil's Advocate, Pragmatic Expert).
+- Juror deliberations use round-first tabs with jump links, compact mode, and per-juror expand focus.
 - Jury chamber explains Chief Justice synthesis and verdict payload.
 - Jury Verdict panel is structured: Verdict, Key evidence, Risk flags, Next actions.
 - Baselines vs Jury compares single-model baselines to the jury output.

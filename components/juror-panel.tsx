@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { LoadingIndicator } from "@/components/loading-indicator";
 import { UsageMeta } from "@/components/usage-meta";
 
@@ -17,6 +18,7 @@ type JurorPanelProps = {
   totalTokens?: number | null;
   loading?: boolean;
   loadingLabel?: string;
+  actions?: ReactNode;
 };
 
 const positionStyles: Record<Position, string> = {
@@ -39,6 +41,7 @@ export function JurorPanel({
   totalTokens,
   loading,
   loadingLabel,
+  actions,
 }: JurorPanelProps) {
   return (
     <div className="flex h-full flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
@@ -55,7 +58,10 @@ export function JurorPanel({
             className="mt-1"
           />
         </div>
-        <span className={`h-2 w-2 rounded-full ${accentClass}`} />
+        <div className="flex items-center gap-2">
+          {actions}
+          <span className={`h-2 w-2 rounded-full ${accentClass}`} />
+        </div>
       </div>
 
       {loading ? (
@@ -74,7 +80,7 @@ export function JurorPanel({
         <span className="text-sm text-zinc-100">Awaiting position...</span>
       )}
 
-      <div className="min-h-[160px] rounded-lg bg-zinc-950 p-3 text-sm text-zinc-200">
+      <div className="min-h-[200px] max-h-[360px] overflow-y-auto whitespace-pre-wrap rounded-lg bg-zinc-950 p-4 text-base leading-relaxed text-zinc-200">
         {streamText ? streamText : "Streaming response..."}
       </div>
 
