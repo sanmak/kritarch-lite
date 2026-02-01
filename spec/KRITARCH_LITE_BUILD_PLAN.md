@@ -1,6 +1,6 @@
 # Kritarch Lite — Phase Plan (1–5) + Session Memory
 
-**Last updated:** 2026-01-31
+**Last updated:** 2026-02-01
 **Purpose:** Single source of truth for status, decisions, and next steps across sessions.
 
 ---
@@ -52,13 +52,14 @@
 ## Phase 4 — Comparison + Polish (MEDIUM)
 **Outcome:** “Money shot” demo ready
 
-- [x] Comparison panel (single vs jury)
+- [x] Comparison panel (baselines vs jury)
 - [x] Hallucination flag UI
 - [x] Example questions per domain
 - [x] Animation polish (if time)
 - [x] Client-side debate history (LocalStorage/IndexedDB)
 - [x] Evaluator scorecard (baseline vs jury metrics)
 - [x] Demo script updated with evaluator scorecard + candidate prompt
+- [x] Deep deliberation mode (rebuttal round when agreement < 40%)
 - [ ] Golden demo question locked (tested & repeatable)
 
 ---
@@ -74,7 +75,7 @@
 ---
 
 ## Open Decisions
-- [x] Final model choice for demo (quality-first: `gpt-5.2` jury/justice/evaluator, `gpt-5-mini` baseline)
+- [x] Model selection policy (default `gpt-5.2`, optional `gpt-5-mini`, alternate baseline uses the other model)
 - [ ] Hallucination flag heuristic (how to compute?)
 - [ ] Final demo question
 - [x] Debate history storage choice (LocalStorage)
@@ -106,7 +107,21 @@
 - Added evaluator scorecard to compare baseline vs jury answers.
 - Updated demo script to include a specific finance prompt and evaluator scorecard.
 - Refreshed README and 500-char writeups to include evaluator scorecard and demo prompt.
-- Set model policy to `gpt-5.2` for jury/justice/evaluator and `gpt-5-mini` for baseline; documented across repo.
+- Set default model policy to `gpt-5.2` for jury/justice/evaluator and `gpt-5-mini` for baseline; documented across repo.
+
+**2026-02-01**
+- Added deep deliberation mode: 3rd coordination path when agreement < 40%.
+- New RebuttalSchema + rebuttal agents (A/B/C) in schemas.ts/jurors.ts.
+- Debate engine runs rebuttal round between critique and revision; feeds rebuttal context into revision and verdict prompts.
+- New RebuttalPanel component + integration in page.tsx with conditional display.
+- RoundProgress shows rebuttal step only during deep deliberation.
+- Updated glossary, cost summary, and README with 3-mode coordination docs.
+- Added same-model baseline alongside alternate baseline for fair comparison + efficiency context.
+- Added primary model selector (gpt-5.2 <-> gpt-5-mini) with alternate-model baseline + localStorage persistence.
+- Updated comparison panel, evaluator scoring, and cost/usage tracking to reflect two baselines.
+- Added Vitest suite with unit + API contract tests, including SSE schema validation against openapi.yaml.
+- Added safety guardrails: prompt-injection heuristics, moderation gate, output redaction, and jailbreak tests.
+- Hardened guardrails to fail-closed on moderation unavailability and expanded output screening to all structured rounds.
 
 ---
 

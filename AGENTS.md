@@ -20,8 +20,9 @@
 - Keep component/file names descriptive and in `PascalCase` for components (for example, `DebatePanel.tsx`).
 
 ## Testing Guidelines
-- No automated test runner is configured in this repository.
-- If you add tests, prefer `__tests__/` folders or `*.test.ts(x)` naming and document the runner you introduce in this file.
+- Tests use **Vitest** (`npm run test`), with `test:watch` for local iteration.
+- If you add tests, prefer `__tests__/` folders or `*.test.ts(x)` naming.
+- When you add or change features, update or add tests in the same PR so the contract stays current.
 
 ## Agent Instructions
 - This repo configures the OpenAI developer docs MCP server in `.codex/config.toml`.
@@ -42,3 +43,4 @@
 
 ## Configuration & Security Notes
 - API routes live under `app/api/*`; keep secrets in environment variables (not committed) and document required keys in the PR.
+- Safety guardrails for `/api/debate` include prompt-injection heuristics, moderation checks (fail-closed), and output redaction; update `openapi.yaml` and tests when they change.

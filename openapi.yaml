@@ -29,6 +29,7 @@ paths:
       summary: Start debate stream
       description: |
         Returns Server-Sent Events (SSE). Each event is `data: {json}\n\n`.
+        Usage events include token counts and an estimated USD cost per agent run.
       requestBody:
         required: true
         content:
@@ -40,27 +41,60 @@ paths:
                 value:
                   query: "Should a fund manager increase NVIDIA exposure given AI regulation uncertainty?"
                   domain: "finance"
+                  model: "gpt-5.2"
       responses:
         "200":
           description: SSE stream of debate events
           content:
             text/event-stream:
               schema:
-                type: string
+                $ref: "#/components/schemas/DebateEvent"
               examples:
                 stream:
                   value: |
                     data: {"type":"phase","phase":"baseline"}
 
-                    data: {"type":"baseline","data":{"summary":"Baseline response (mock)."}}
+                    data: {"type":"baseline_mini","data":{"position":"nuanced","summary":"Alternate baseline response (mock).","confidence":0.6,"reasoning":"Short baseline reasoning."}}
+
+                    data: {"type":"baseline_fair","data":{"position":"nuanced","summary":"Selected-model baseline response (mock).","confidence":0.6,"reasoning":"Short baseline reasoning."}}
+
+                    data: {"type":"usage","scope":"baselineMini","data":{"model":"gpt-5-mini","inputTokens":420,"outputTokens":180,"totalTokens":600,"costUsd":0.0007}}
+
+                    data: {"type":"usage","scope":"baselineFair","data":{"model":"gpt-5.2","inputTokens":420,"outputTokens":180,"totalTokens":600,"costUsd":0.0028}}
 
                     data: {"type":"phase","phase":"positions"}
 
                     data: {"type":"complete"}
         "400":
           description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Request blocked by safety guardrails
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Safety check unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/samples:
     get:
       summary: List sample questions
@@ -105,10 +139,565 @@ components:
       properties:
         query:
           type: string
+          maxLength: 2000
         domain:
           type: string
           enum: [finance, healthcare, legal, general]
+        model:
+          type: string
+          description: Primary model for the jury and selected-model baseline.
+          enum: [gpt-5.2, gpt-5-mini]
       required: [query, domain]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    Position:
+      type: string
+      enum: [support, oppose, nuanced]
+    JurorId:
+      type: string
+      enum: [A, B, C]
+    BaselineOutput:
+      type: object
+      properties:
+        position:
+          $ref: "#/components/schemas/Position"
+        summary:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        reasoning:
+          type: string
+      required: [position, summary, confidence, reasoning]
+      additionalProperties: false
+    JurorEvidence:
+      type: object
+      properties:
+        claim:
+          type: string
+        basis:
+          type: string
+      required: [claim, basis]
+      additionalProperties: false
+    JurorPosition:
+      type: object
+      properties:
+        position:
+          $ref: "#/components/schemas/Position"
+        summary:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        reasoning:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/JurorEvidence"
+        risks:
+          type: array
+          items:
+            type: string
+      required:
+        [position, summary, confidence, reasoning, evidence, risks]
+      additionalProperties: false
+    JurorPositions:
+      type: object
+      properties:
+        A:
+          $ref: "#/components/schemas/JurorPosition"
+        B:
+          $ref: "#/components/schemas/JurorPosition"
+        C:
+          $ref: "#/components/schemas/JurorPosition"
+      required: [A, B, C]
+      additionalProperties: false
+    CritiqueChallenge:
+      type: object
+      properties:
+        point:
+          type: string
+        counterargument:
+          type: string
+        severity:
+          type: string
+          enum: [minor, moderate, major]
+      required: [point, counterargument, severity]
+      additionalProperties: false
+    Critique:
+      type: object
+      properties:
+        targetJuror:
+          type: string
+        agreements:
+          type: array
+          items:
+            type: string
+        challenges:
+          type: array
+          items:
+            $ref: "#/components/schemas/CritiqueChallenge"
+        missingPerspectives:
+          type: array
+          items:
+            type: string
+        overallAssessment:
+          type: string
+          enum: [strong, moderate, weak]
+      required:
+        [targetJuror, agreements, challenges, missingPerspectives, overallAssessment]
+      additionalProperties: false
+    CritiquesByJuror:
+      type: object
+      properties:
+        A:
+          type: array
+          items:
+            $ref: "#/components/schemas/Critique"
+        B:
+          type: array
+          items:
+            $ref: "#/components/schemas/Critique"
+        C:
+          type: array
+          items:
+            $ref: "#/components/schemas/Critique"
+      required: [A, B, C]
+      additionalProperties: false
+    RevisedPosition:
+      type: object
+      properties:
+        originalPosition:
+          $ref: "#/components/schemas/Position"
+        revisedPosition:
+          $ref: "#/components/schemas/Position"
+        positionChanged:
+          type: boolean
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        summary:
+          type: string
+        reasoning:
+          type: string
+        concessions:
+          type: array
+          items:
+            type: string
+        rebuttals:
+          type: array
+          items:
+            type: string
+      required:
+        [
+          originalPosition,
+          revisedPosition,
+          positionChanged,
+          confidence,
+          summary,
+          reasoning,
+          concessions,
+          rebuttals,
+        ]
+      additionalProperties: false
+    RebuttalOutput:
+      type: object
+      properties:
+        concessions:
+          type: array
+          items:
+            type: string
+        defenses:
+          type: array
+          items:
+            type: string
+        refinedPosition:
+          $ref: "#/components/schemas/Position"
+        refinedSummary:
+          type: string
+      required: [concessions, defenses, refinedPosition, refinedSummary]
+      additionalProperties: false
+    RebuttalsByJuror:
+      type: object
+      properties:
+        A:
+          $ref: "#/components/schemas/RebuttalOutput"
+        B:
+          $ref: "#/components/schemas/RebuttalOutput"
+        C:
+          $ref: "#/components/schemas/RebuttalOutput"
+      required: [A, B, C]
+      additionalProperties: false
+    RevisionsByJuror:
+      type: object
+      properties:
+        A:
+          $ref: "#/components/schemas/RevisedPosition"
+        B:
+          $ref: "#/components/schemas/RevisedPosition"
+        C:
+          $ref: "#/components/schemas/RevisedPosition"
+      required: [A, B, C]
+      additionalProperties: false
+    PositionBreakdown:
+      type: object
+      properties:
+        support:
+          type: number
+        oppose:
+          type: number
+        nuanced:
+          type: number
+      required: [support, oppose, nuanced]
+      additionalProperties: false
+    ReasoningQuality:
+      type: object
+      properties:
+        jurorA:
+          type: number
+          minimum: 0
+          maximum: 10
+        jurorB:
+          type: number
+          minimum: 0
+          maximum: 10
+        jurorC:
+          type: number
+          minimum: 0
+          maximum: 10
+      required: [jurorA, jurorB, jurorC]
+      additionalProperties: false
+    HallucinationFlag:
+      type: object
+      properties:
+        juror:
+          type: string
+        claim:
+          type: string
+        reason:
+          type: string
+      required: [juror, claim, reason]
+      additionalProperties: false
+    ConsensusVerdict:
+      type: object
+      properties:
+        verdict:
+          type: string
+        agreementScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        confidenceScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        positionBreakdown:
+          $ref: "#/components/schemas/PositionBreakdown"
+        keyAgreements:
+          type: array
+          items:
+            type: string
+        keyDisagreements:
+          type: array
+          items:
+            type: string
+        reasoningQuality:
+          $ref: "#/components/schemas/ReasoningQuality"
+        hallucinationFlags:
+          type: array
+          items:
+            $ref: "#/components/schemas/HallucinationFlag"
+        finalReasoning:
+          type: string
+      required:
+        [
+          verdict,
+          agreementScore,
+          confidenceScore,
+          positionBreakdown,
+          keyAgreements,
+          keyDisagreements,
+          reasoningQuality,
+          hallucinationFlags,
+          finalReasoning,
+        ]
+      additionalProperties: false
+    EvaluationScores:
+      type: object
+      properties:
+        overall:
+          type: number
+          minimum: 0
+          maximum: 10
+        consistency:
+          type: number
+          minimum: 0
+          maximum: 10
+        specificity:
+          type: number
+          minimum: 0
+          maximum: 10
+        reasoning:
+          type: number
+          minimum: 0
+          maximum: 10
+        coverage:
+          type: number
+          minimum: 0
+          maximum: 10
+        notes:
+          type: string
+      required:
+        [overall, consistency, specificity, reasoning, coverage, notes]
+      additionalProperties: false
+    EvaluationOutput:
+      type: object
+      properties:
+        baseline:
+          $ref: "#/components/schemas/EvaluationScores"
+        jury:
+          $ref: "#/components/schemas/EvaluationScores"
+        winner:
+          type: string
+          enum: [baseline, jury, tie]
+        rationale:
+          type: string
+      required: [baseline, jury, winner, rationale]
+      additionalProperties: false
+    CoordinationDecision:
+      type: object
+      properties:
+        agreementScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        averageConfidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        skipCritique:
+          type: boolean
+        skipRevision:
+          type: boolean
+        rationale:
+          type: string
+        disagreementFocus:
+          type: array
+          items:
+            type: string
+      required:
+        [
+          agreementScore,
+          averageConfidence,
+          skipCritique,
+          skipRevision,
+          rationale,
+          disagreementFocus,
+        ]
+      additionalProperties: false
+    UsageSnapshot:
+      type: object
+      properties:
+        model:
+          type: string
+        inputTokens:
+          type: integer
+          minimum: 0
+        outputTokens:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        costUsd:
+          anyOf:
+            - type: number
+              minimum: 0
+            - type: "null"
+      required: [model, inputTokens, outputTokens, totalTokens, costUsd]
+      additionalProperties: false
+    UsageScope:
+      type: string
+      enum:
+        [
+          baselineFair,
+          baselineMini,
+          jurorA,
+          jurorB,
+          jurorC,
+          critiqueA,
+          critiqueB,
+          critiqueC,
+          rebuttalA,
+          rebuttalB,
+          rebuttalC,
+          revisionA,
+          revisionB,
+          revisionC,
+          verdict,
+          evaluator,
+        ]
+    DebateEventPhase:
+      type: object
+      properties:
+        type:
+          const: phase
+        phase:
+          type: string
+          enum: [baseline, positions, critique, rebuttal, revision, verdict]
+      required: [type, phase]
+      additionalProperties: false
+    DebateEventBaselineMini:
+      type: object
+      properties:
+        type:
+          const: baseline_mini
+        data:
+          $ref: "#/components/schemas/BaselineOutput"
+      required: [type, data]
+      additionalProperties: false
+    DebateEventBaselineFair:
+      type: object
+      properties:
+        type:
+          const: baseline_fair
+        data:
+          $ref: "#/components/schemas/BaselineOutput"
+      required: [type, data]
+      additionalProperties: false
+    DebateEventJurorDelta:
+      type: object
+      properties:
+        type:
+          const: juror_delta
+        juror:
+          $ref: "#/components/schemas/JurorId"
+        delta:
+          type: string
+      required: [type, juror, delta]
+      additionalProperties: false
+    DebateEventCoordination:
+      type: object
+      properties:
+        type:
+          const: coordination
+        data:
+          $ref: "#/components/schemas/CoordinationDecision"
+      required: [type, data]
+      additionalProperties: false
+    DebateEventPositionsComplete:
+      type: object
+      properties:
+        type:
+          const: positions_complete
+        positions:
+          $ref: "#/components/schemas/JurorPositions"
+      required: [type, positions]
+      additionalProperties: false
+    DebateEventCritiquesComplete:
+      type: object
+      properties:
+        type:
+          const: critiques_complete
+        critiques:
+          anyOf:
+            - $ref: "#/components/schemas/CritiquesByJuror"
+            - type: "null"
+      required: [type, critiques]
+      additionalProperties: false
+    DebateEventRebuttalsComplete:
+      type: object
+      properties:
+        type:
+          const: rebuttals_complete
+        rebuttals:
+          anyOf:
+            - $ref: "#/components/schemas/RebuttalsByJuror"
+            - type: "null"
+      required: [type, rebuttals]
+      additionalProperties: false
+    DebateEventRevisionsComplete:
+      type: object
+      properties:
+        type:
+          const: revisions_complete
+        revisions:
+          anyOf:
+            - $ref: "#/components/schemas/RevisionsByJuror"
+            - type: "null"
+      required: [type, revisions]
+      additionalProperties: false
+    DebateEventVerdict:
+      type: object
+      properties:
+        type:
+          const: verdict
+        data:
+          $ref: "#/components/schemas/ConsensusVerdict"
+      required: [type, data]
+      additionalProperties: false
+    DebateEventEvaluation:
+      type: object
+      properties:
+        type:
+          const: evaluation
+        data:
+          $ref: "#/components/schemas/EvaluationOutput"
+      required: [type, data]
+      additionalProperties: false
+    DebateEventUsage:
+      type: object
+      properties:
+        type:
+          const: usage
+        scope:
+          $ref: "#/components/schemas/UsageScope"
+        data:
+          $ref: "#/components/schemas/UsageSnapshot"
+      required: [type, scope, data]
+      additionalProperties: false
+    DebateEventComplete:
+      type: object
+      properties:
+        type:
+          const: complete
+      required: [type]
+      additionalProperties: false
+    DebateEventError:
+      type: object
+      properties:
+        type:
+          const: error
+        message:
+          type: string
+      required: [type, message]
+      additionalProperties: false
+    DebateEvent:
+      description: |
+        Each SSE `data:` payload is a JSON object matching one of these variants.
+      oneOf:
+        - $ref: "#/components/schemas/DebateEventPhase"
+        - $ref: "#/components/schemas/DebateEventBaselineMini"
+        - $ref: "#/components/schemas/DebateEventBaselineFair"
+        - $ref: "#/components/schemas/DebateEventJurorDelta"
+        - $ref: "#/components/schemas/DebateEventCoordination"
+        - $ref: "#/components/schemas/DebateEventPositionsComplete"
+        - $ref: "#/components/schemas/DebateEventCritiquesComplete"
+        - $ref: "#/components/schemas/DebateEventRebuttalsComplete"
+        - $ref: "#/components/schemas/DebateEventRevisionsComplete"
+        - $ref: "#/components/schemas/DebateEventVerdict"
+        - $ref: "#/components/schemas/DebateEventEvaluation"
+        - $ref: "#/components/schemas/DebateEventUsage"
+        - $ref: "#/components/schemas/DebateEventComplete"
+        - $ref: "#/components/schemas/DebateEventError"
     SampleQuestion:
       type: object
       properties:

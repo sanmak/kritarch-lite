@@ -1,7 +1,7 @@
 # Kritarch Lite — Final Spec (Product + Engineering + Backend + Frontend + DevOps)
 
 **Status:** Final baseline spec for implementation
-**Last updated:** 2026-01-31
+**Last updated:** 2026-02-01
 **Owner:** Sanket
 
 ---
@@ -21,10 +21,10 @@
 4. **Round 2**: Parallel critiques
 5. **Round 3**: Parallel revisions
 6. **Verdict**: Chief Justice synthesis
-7. **Comparison**: Single model vs Jury (hallucination flag)
+7. **Comparison**: Baselines vs Jury (fairness + efficiency context)
 
 ### Goals
-- Demonstrate measurable improvement vs single model (qualitative in demo, quantitative if time permits).
+- Demonstrate measurable improvement vs selected-model baseline (qualitative in demo, quantitative if time permits).
 - Real‑time visibility of multi‑agent coordination.
 - Polished, stable demo in < 2 minutes.
 
@@ -54,10 +54,11 @@
 - **Deploy**: Docker → Railway
 - **Client persistence**: LocalStorage or IndexedDB for debate history (no server DB for demo)
 
-### Model policy (quality-first)
-- **Jurors + Chief Justice + Evaluator:** `gpt-5.2`
-- **Baseline single model:** `gpt-5-mini`
-- Controlled via env vars: `OPENAI_MODEL`, `OPENAI_BASELINE_MODEL`.
+### Model policy (quality-first default)
+- **Jurors + Chief Justice + Evaluator:** selected model (`gpt-5.2` default, `gpt-5-mini` optional)
+- **Baseline (selected model, fairness):** matches selected model
+- **Baseline (alternate model):** the other model (`gpt-5.2` <-> `gpt-5-mini`)
+- Defaults controlled via env vars: `OPENAI_MODEL`, `OPENAI_BASELINE_MODEL`.
 
 ### Runtime data flow
 - Client sends question + domain to `/api/debate` (POST)
@@ -71,23 +72,35 @@
 ### API: `POST /api/debate`
 **Request:**
 ```json
-{ "query": "string", "domain": "finance|healthcare|legal|general" }
+{ "query": "string", "domain": "finance|healthcare|legal|general", "model": "gpt-5.2|gpt-5-mini" }
 ```
 
+**Safety guardrails:**
+- Preflight prompt-injection heuristics + moderation gate (fail-closed when moderation is unavailable). Unsafe requests return **403**/**503** with a safe error.
+- Output safety pass screens structured rounds (positions/critiques/rebuttals/revisions/verdict/evaluation) and redacts unsafe content before streaming.
+
 **SSE Events (ordered):**
-- `phase`: `baseline | positions | critique | revision | verdict | complete`
-- `baseline`: single‑model output
+- `phase`: `baseline | positions | critique | rebuttal | revision | verdict | complete`
+- `baseline_mini`: single‑model output (alternate model)
+- `baseline_fair`: single‑model output (selected model)
 - `juror_delta`: streaming text per juror
 - `positions_complete`: structured positions
 - `critiques_complete`: structured critiques
+- `rebuttal_delta`: streaming rebuttal text (deep deliberation only)
+- `rebuttals_complete`: structured rebuttals
 - `revisions_complete`: structured revisions
 - `verdict`: structured consensus verdict
+- `evaluation`: evaluator scorecard comparing jury vs selected-model baseline
+- `usage`: token + cost snapshots per agent
+- `coordination`: agreement + skip/deep-deliberation decision
+- `complete`: debate finished
 - `error`: sanitized error message
 
 ### Debate orchestration
-- **Round 0**: Baseline single model
+- **Round 0**: Baselines (selected model + alternate model) in parallel
 - **Round 1**: 3 jurors parallel (streaming)
 - **Round 2**: critiques in parallel
+- **Round 2.5**: rebuttals in parallel (deep deliberation only)
 - **Round 3**: revisions in parallel
 - **Verdict**: Chief Justice synthesis
 
@@ -107,7 +120,7 @@ All agent outputs are validated with Zod.
 - Round progress stepper
 - Juror panels (streaming)
 - Verdict panel (agreement/confidence)
-- Comparison panel (single vs jury)
+- Comparison panel (baselines vs jury + evaluator scorecard)
 
 ### UX requirements
 - Streaming cursor indicator
@@ -121,6 +134,7 @@ All agent outputs are validated with Zod.
 ## 6) Security & OWASP Controls
 
 - Validate input with Zod
+- Safety guardrails: prompt-injection heuristics + moderation gate (fail-closed) + output redaction across all structured rounds
 - Sanitize error responses (no stack traces)
 - Rate limit per IP (in‑memory baseline)
 - Server‑only secret usage (`OPENAI_API_KEY`)
@@ -218,7 +232,7 @@ README.md
 ## 12) Debate History (Client‑Only)
 
 - Store completed debates in LocalStorage or IndexedDB (client‑only).
-- Schema includes: timestamp, domain, query, baseline, positions, critiques, revisions, verdict.
+- Schema includes: timestamp, domain, query, baselineFair, baselineMini, positions, critiques, rebuttals, revisions, verdict.
 - Provide a lightweight history panel to list and reload past debates.
 - Keep data size bounded (e.g., last 10–20 debates).
 
