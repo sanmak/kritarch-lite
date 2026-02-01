@@ -1,5 +1,6 @@
 import { run } from "@openai/agents";
-import type { CoordinationDecision, Domain, JurorId } from "@/lib/types";
+import type { CoordinationDecision, Domain, JurorId, ModelOption } from "@/lib/types";
+import { getAlternateModel, MODEL_OPTIONS } from "@/lib/types";
 import type {
   BaselineOutput,
   ConsensusVerdict,
@@ -7,10 +8,13 @@ import type {
   CritiquesOutput,
   EvaluationOutput,
   JurorPosition,
+  RebuttalOutput,
   RevisedPosition,
 } from "@/lib/agents/schemas";
+import { runtimeConfig } from "@/lib/config";
 import {
-  baselineAgent,
+  baselineFairAgent,
+  baselineMiniAgent,
   chiefJustice,
   evaluatorAgent,
 } from "@/lib/agents/chief-justice";
@@ -21,10 +25,22 @@ import {
   jurorA,
   jurorB,
   jurorC,
+  rebuttalAgentA,
+  rebuttalAgentB,
+  rebuttalAgentC,
   revisionAgentA,
   revisionAgentB,
   revisionAgentC,
 } from "@/lib/agents/jurors";
+import { buildUsageSnapshot } from "@/lib/agents/cost";
+import { modelSettingsFor } from "@/lib/agents/model-settings";
+import {
+  BASELINE_TEMPERATURE,
+  CHIEF_JUSTICE_TEMPERATURE,
+  EVALUATOR_TEMPERATURE,
+  JUROR_TEMPERATURES,
+} from "@/lib/agents/model-presets";
+import type { UsageScope, UsageSnapshot } from "@/lib/usage";
 import type { LogFields } from "@/lib/logging/logger";
 import { truncate } from "@/lib/logging/logger";
 
@@ -32,20 +48,24 @@ export type DebatePhase =
   | "baseline"
   | "positions"
   | "critique"
+  | "rebuttal"
   | "revision"
   | "verdict"
   | "complete";
 
 export type DebateEvent =
   | { type: "phase"; phase: DebatePhase }
-  | { type: "baseline"; data: BaselineOutput }
+  | { type: "baseline_fair"; data: BaselineOutput }
+  | { type: "baseline_mini"; data: BaselineOutput }
   | { type: "juror_delta"; juror: JurorId; delta: string }
   | { type: "coordination"; data: CoordinationDecision }
   | { type: "positions_complete"; positions: Record<JurorId, JurorPosition> }
   | { type: "critiques_complete"; critiques: Record<JurorId, Critique[]> | null }
+  | { type: "rebuttals_complete"; rebuttals: Record<JurorId, RebuttalOutput> | null }
   | { type: "revisions_complete"; revisions: Record<JurorId, RevisedPosition> | null }
   | { type: "verdict"; data: ConsensusVerdict }
   | { type: "evaluation"; data: EvaluationOutput }
+  | { type: "usage"; scope: UsageScope; data: UsageSnapshot }
   | { type: "complete" };
 
 const chunkText = (text: string, size = 80) => {
@@ -104,6 +124,7 @@ const buildDisagreementFocus = (positions: Record<JurorId, JurorPosition>) => {
 export async function* runDebate(
   query: string,
   domain: Domain,
+  primaryModel: ModelOption = runtimeConfig.OPENAI_MODEL as ModelOption,
   logger?: {
     debug: (message: string, fields?: LogFields) => void;
     info: (message: string, fields?: LogFields) => void;
@@ -111,11 +132,82 @@ export async function* runDebate(
     error: (message: string, fields?: LogFields) => void;
   }
 ): AsyncGenerator<DebateEvent> {
+  const normalizedModel = MODEL_OPTIONS.includes(primaryModel)
+    ? primaryModel
+    : MODEL_OPTIONS[0];
+  const alternateModel = getAlternateModel(normalizedModel);
   const context = { query, domain };
   const requestStart = Date.now();
   logger?.info("debate.start", {
     domain,
     queryPreview: truncate(query, 160),
+    primaryModel: normalizedModel,
+    alternateModel,
+  });
+
+  const baselineFairAgentForRun = baselineFairAgent.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, BASELINE_TEMPERATURE),
+  });
+  const baselineMiniAgentForRun = baselineMiniAgent.clone({
+    model: alternateModel,
+    modelSettings: modelSettingsFor(alternateModel, BASELINE_TEMPERATURE),
+  });
+  const jurorAAgent = jurorA.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.A),
+  });
+  const jurorBAgent = jurorB.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.B),
+  });
+  const jurorCAgent = jurorC.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.C),
+  });
+  const critiqueAgentAForRun = critiqueAgentA.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.A),
+  });
+  const critiqueAgentBForRun = critiqueAgentB.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.B),
+  });
+  const critiqueAgentCForRun = critiqueAgentC.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.C),
+  });
+  const rebuttalAgentAForRun = rebuttalAgentA.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.A),
+  });
+  const rebuttalAgentBForRun = rebuttalAgentB.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.B),
+  });
+  const rebuttalAgentCForRun = rebuttalAgentC.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.C),
+  });
+  const revisionAgentAForRun = revisionAgentA.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.A),
+  });
+  const revisionAgentBForRun = revisionAgentB.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.B),
+  });
+  const revisionAgentCForRun = revisionAgentC.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, JUROR_TEMPERATURES.C),
+  });
+  const chiefJusticeAgent = chiefJustice.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, CHIEF_JUSTICE_TEMPERATURE),
+  });
+  const evaluatorAgentForRun = evaluatorAgent.clone({
+    model: normalizedModel,
+    modelSettings: modelSettingsFor(normalizedModel, EVALUATOR_TEMPERATURE),
   });
 
   const phaseStart = (phase: DebatePhase) =>
@@ -126,21 +218,42 @@ export async function* runDebate(
   let timer = Date.now();
   yield { type: "phase", phase: "baseline" };
   phaseStart("baseline");
-  const baselineResult = await run(baselineAgent, query, { context });
-  if (!baselineResult.finalOutput) {
-    throw new Error("Baseline agent did not return output.");
+  const [baselineMiniResult, baselineFairResult] = await Promise.all([
+    run(baselineMiniAgentForRun, query, { context }),
+    run(baselineFairAgentForRun, query, { context }),
+  ]);
+  if (!baselineMiniResult.finalOutput || !baselineFairResult.finalOutput) {
+    throw new Error("Baseline agents did not return output.");
   }
-  const baseline = baselineResult.finalOutput;
-  yield { type: "baseline", data: baseline };
+  const baselineMini = baselineMiniResult.finalOutput;
+  const baselineFair = baselineFairResult.finalOutput;
+  yield { type: "baseline_mini", data: baselineMini };
+  yield { type: "baseline_fair", data: baselineFair };
+  yield {
+    type: "usage",
+    scope: "baselineMini",
+    data: buildUsageSnapshot(
+      baselineMiniAgentForRun.model,
+      baselineMiniResult.state.usage
+    ),
+  };
+  yield {
+    type: "usage",
+    scope: "baselineFair",
+    data: buildUsageSnapshot(
+      baselineFairAgentForRun.model,
+      baselineFairResult.state.usage
+    ),
+  };
   phaseEnd("baseline", timer);
 
   timer = Date.now();
   yield { type: "phase", phase: "positions" };
   phaseStart("positions");
   const [posAResult, posBResult, posCResult] = await Promise.all([
-    run(jurorA, query, { context }),
-    run(jurorB, query, { context }),
-    run(jurorC, query, { context }),
+    run(jurorAAgent, query, { context }),
+    run(jurorBAgent, query, { context }),
+    run(jurorCAgent, query, { context }),
   ]);
 
   if (!posAResult.finalOutput || !posBResult.finalOutput || !posCResult.finalOutput) {
@@ -151,6 +264,21 @@ export async function* runDebate(
     A: posAResult.finalOutput,
     B: posBResult.finalOutput,
     C: posCResult.finalOutput,
+  };
+  yield {
+    type: "usage",
+    scope: "jurorA",
+    data: buildUsageSnapshot(jurorAAgent.model, posAResult.state.usage),
+  };
+  yield {
+    type: "usage",
+    scope: "jurorB",
+    data: buildUsageSnapshot(jurorBAgent.model, posBResult.state.usage),
+  };
+  yield {
+    type: "usage",
+    scope: "jurorC",
+    data: buildUsageSnapshot(jurorCAgent.model, posCResult.state.usage),
   };
 
   const jurorSummaries = {
@@ -176,15 +304,19 @@ export async function* runDebate(
   const averageConfidence = computeAverageConfidence(positions);
   const disagreementFocus = buildDisagreementFocus(positions);
   const shouldSkipCritique = agreementScore >= 0.8 && averageConfidence >= 0.6;
+  const isDeepDeliberation = !shouldSkipCritique && agreementScore < 0.4;
 
   let coordination: CoordinationDecision = {
     agreementScore,
     averageConfidence,
     skipCritique: shouldSkipCritique,
     skipRevision: shouldSkipCritique,
+    deepDeliberation: isDeepDeliberation,
     rationale: shouldSkipCritique
       ? "High agreement and confidence; fast-tracking to verdict."
-      : "Disagreement detected; running critique and revision rounds.",
+      : isDeepDeliberation
+        ? "Deep disagreement detected; running critique, rebuttal, and revision rounds."
+        : "Disagreement detected; running critique and revision rounds.",
     disagreementFocus,
   };
 
@@ -193,10 +325,12 @@ export async function* runDebate(
     averageConfidence,
     skipCritique: coordination.skipCritique,
     skipRevision: coordination.skipRevision,
+    deepDeliberation: coordination.deepDeliberation,
   });
   yield { type: "coordination", data: coordination };
 
   let critiques: Record<JurorId, Critique[]> | null = null;
+  let rebuttals: Record<JurorId, RebuttalOutput> | null = null;
   let revisions: Record<JurorId, RevisedPosition> | null = null;
 
   if (shouldSkipCritique) {
@@ -206,6 +340,8 @@ export async function* runDebate(
     critiques = { A: [], B: [], C: [] };
     yield { type: "critiques_complete", critiques };
     phaseEnd("critique", timer);
+
+    yield { type: "rebuttals_complete", rebuttals };
 
     timer = Date.now();
     yield { type: "phase", phase: "revision" };
@@ -229,9 +365,9 @@ export async function* runDebate(
       `Return an object with a 'critiques' array following the schema.`;
 
     const [critAResult, critBResult, critCResult] = await Promise.all([
-      run(critiqueAgentA, critiquePrompt("A"), { context }),
-      run(critiqueAgentB, critiquePrompt("B"), { context }),
-      run(critiqueAgentC, critiquePrompt("C"), { context }),
+      run(critiqueAgentAForRun, critiquePrompt("A"), { context }),
+      run(critiqueAgentBForRun, critiquePrompt("B"), { context }),
+      run(critiqueAgentCForRun, critiquePrompt("C"), { context }),
     ]);
 
     if (!critAResult.finalOutput || !critBResult.finalOutput || !critCResult.finalOutput) {
@@ -243,15 +379,78 @@ export async function* runDebate(
       B: (critBResult.finalOutput as CritiquesOutput).critiques,
       C: (critCResult.finalOutput as CritiquesOutput).critiques,
     };
+    yield {
+      type: "usage",
+      scope: "critiqueA",
+      data: buildUsageSnapshot(critiqueAgentAForRun.model, critAResult.state.usage),
+    };
+    yield {
+      type: "usage",
+      scope: "critiqueB",
+      data: buildUsageSnapshot(critiqueAgentBForRun.model, critBResult.state.usage),
+    };
+    yield {
+      type: "usage",
+      scope: "critiqueC",
+      data: buildUsageSnapshot(critiqueAgentCForRun.model, critCResult.state.usage),
+    };
 
     yield { type: "critiques_complete", critiques };
     phaseEnd("critique", timer);
+
+    if (isDeepDeliberation) {
+      timer = Date.now();
+      yield { type: "phase", phase: "rebuttal" };
+      phaseStart("rebuttal");
+      const rebuttalPrompt = (juror: JurorId, original: JurorPosition, critiqueList: Critique[]) =>
+        `Question: ${query}\n\n` +
+        `Your original position: ${original.summary}\n${original.reasoning}\n\n` +
+        `Critiques you received: ${JSON.stringify(critiqueList)}\n\n` +
+        "Respond to these critiques. Concede valid points, defend your strongest arguments, and refine your position. " +
+        "Return concessions, defenses, refined position, and refined summary.";
+
+      const [rebAResult, rebBResult, rebCResult] = await Promise.all([
+        run(rebuttalAgentAForRun, rebuttalPrompt("A", positions.A, critiques.A), { context }),
+        run(rebuttalAgentBForRun, rebuttalPrompt("B", positions.B, critiques.B), { context }),
+        run(rebuttalAgentCForRun, rebuttalPrompt("C", positions.C, critiques.C), { context }),
+      ]);
+
+      if (!rebAResult.finalOutput || !rebBResult.finalOutput || !rebCResult.finalOutput) {
+        throw new Error("One or more rebuttals missing.");
+      }
+
+      rebuttals = {
+        A: rebAResult.finalOutput,
+        B: rebBResult.finalOutput,
+        C: rebCResult.finalOutput,
+      };
+      yield {
+        type: "usage",
+        scope: "rebuttalA",
+        data: buildUsageSnapshot(rebuttalAgentAForRun.model, rebAResult.state.usage),
+      };
+      yield {
+        type: "usage",
+        scope: "rebuttalB",
+        data: buildUsageSnapshot(rebuttalAgentBForRun.model, rebBResult.state.usage),
+      };
+      yield {
+        type: "usage",
+        scope: "rebuttalC",
+        data: buildUsageSnapshot(rebuttalAgentCForRun.model, rebCResult.state.usage),
+      };
+
+      yield { type: "rebuttals_complete", rebuttals };
+      phaseEnd("rebuttal", timer);
+    } else {
+      yield { type: "rebuttals_complete", rebuttals };
+    }
 
     const majorChallenges = Object.values(critiques)
       .flat()
       .flatMap((critique) => critique.challenges)
       .filter((challenge) => challenge.severity === "major").length;
-    const shouldSkipRevision = majorChallenges === 0 && agreementScore >= 0.6;
+    const shouldSkipRevision = !isDeepDeliberation && majorChallenges === 0 && agreementScore >= 0.6;
 
     if (shouldSkipRevision) {
       coordination = {
@@ -273,17 +472,28 @@ export async function* runDebate(
       const revisionPrompt = (
         juror: JurorId,
         original: JurorPosition,
-        critiqueList: Critique[]
-      ) =>
-        `Question: ${query}\n\n` +
-        `Your original position: ${original.summary}\n${original.reasoning}\n\n` +
-        `Critiques you received: ${JSON.stringify(critiqueList)}\n\n` +
-        "Revise your position if needed. Provide updated summary, confidence, concessions, and rebuttals.";
+        critiqueList: Critique[],
+        rebuttal: RebuttalOutput | null
+      ) => {
+        let prompt =
+          `Question: ${query}\n\n` +
+          `Your original position: ${original.summary}\n${original.reasoning}\n\n` +
+          `Critiques you received: ${JSON.stringify(critiqueList)}\n\n`;
+        if (rebuttal) {
+          prompt +=
+            `Your rebuttal: concessions=${JSON.stringify(rebuttal.concessions)}, ` +
+            `defenses=${JSON.stringify(rebuttal.defenses)}, ` +
+            `refined position=${rebuttal.refinedPosition}, ` +
+            `refined summary=${rebuttal.refinedSummary}\n\n`;
+        }
+        prompt += "Revise your position if needed. Provide updated summary, confidence, concessions, and rebuttals.";
+        return prompt;
+      };
 
       const [revAResult, revBResult, revCResult] = await Promise.all([
-        run(revisionAgentA, revisionPrompt("A", positions.A, critiques.A), { context }),
-        run(revisionAgentB, revisionPrompt("B", positions.B, critiques.B), { context }),
-        run(revisionAgentC, revisionPrompt("C", positions.C, critiques.C), { context }),
+        run(revisionAgentAForRun, revisionPrompt("A", positions.A, critiques.A, rebuttals?.A ?? null), { context }),
+        run(revisionAgentBForRun, revisionPrompt("B", positions.B, critiques.B, rebuttals?.B ?? null), { context }),
+        run(revisionAgentCForRun, revisionPrompt("C", positions.C, critiques.C, rebuttals?.C ?? null), { context }),
       ]);
 
       if (!revAResult.finalOutput || !revBResult.finalOutput || !revCResult.finalOutput) {
@@ -294,6 +504,21 @@ export async function* runDebate(
         A: revAResult.finalOutput,
         B: revBResult.finalOutput,
         C: revCResult.finalOutput,
+      };
+      yield {
+        type: "usage",
+        scope: "revisionA",
+        data: buildUsageSnapshot(revisionAgentAForRun.model, revAResult.state.usage),
+      };
+      yield {
+        type: "usage",
+        scope: "revisionB",
+        data: buildUsageSnapshot(revisionAgentBForRun.model, revBResult.state.usage),
+      };
+      yield {
+        type: "usage",
+        scope: "revisionC",
+        data: buildUsageSnapshot(revisionAgentCForRun.model, revCResult.state.usage),
       };
 
       yield { type: "revisions_complete", revisions };
@@ -307,6 +532,9 @@ export async function* runDebate(
   const critiqueSummary = coordination.skipCritique
     ? "Skipped due to high agreement in Round 1."
     : JSON.stringify(critiques);
+  const rebuttalSummary = rebuttals
+    ? JSON.stringify(rebuttals)
+    : "No rebuttal round (standard mode).";
   const revisionSummary = coordination.skipRevision
     ? coordination.skipCritique
       ? "Skipped due to high agreement in Round 1."
@@ -316,23 +544,29 @@ export async function* runDebate(
     `Question: ${query}\n\n` +
     `Round 1 positions: ${JSON.stringify(positions)}\n\n` +
     `Round 2 critiques: ${critiqueSummary}\n\n` +
+    (isDeepDeliberation ? `Rebuttals: ${rebuttalSummary}\n\n` : "") +
     `Round 3 revisions: ${revisionSummary}\n\n` +
     "Synthesize a final consensus verdict with agreement/confidence scores and hallucination flags.";
 
-  const verdictResult = await run(chiefJustice, verdictPrompt, { context });
+  const verdictResult = await run(chiefJusticeAgent, verdictPrompt, { context });
   if (!verdictResult.finalOutput) {
     throw new Error("Verdict missing.");
   }
 
   const verdict = verdictResult.finalOutput;
   yield { type: "verdict", data: verdict };
+  yield {
+    type: "usage",
+    scope: "verdict",
+    data: buildUsageSnapshot(chiefJusticeAgent.model, verdictResult.state.usage),
+  };
   phaseEnd("verdict", timer);
   try {
     const evaluationPrompt =
       `Question: ${query}\n\n` +
-      `Baseline answer: ${baseline.summary}\n` +
-      `Baseline reasoning: ${baseline.reasoning}\n` +
-      `Baseline confidence: ${baseline.confidence}\n\n` +
+      `Baseline answer: ${baselineFair.summary}\n` +
+      `Baseline reasoning: ${baselineFair.reasoning}\n` +
+      `Baseline confidence: ${baselineFair.confidence}\n\n` +
       `Jury verdict: ${verdict.verdict}\n` +
       `Final reasoning: ${verdict.finalReasoning}\n` +
       `Agreement score: ${verdict.agreementScore}\n` +
@@ -341,9 +575,17 @@ export async function* runDebate(
       `Key disagreements: ${JSON.stringify(verdict.keyDisagreements)}\n\n` +
       "Score baseline vs jury for consistency, specificity, reasoning transparency, and coverage. " +
       "Return strict JSON matching the schema.";
-    const evaluationResult = await run(evaluatorAgent, evaluationPrompt, { context });
+    const evaluationResult = await run(evaluatorAgentForRun, evaluationPrompt, { context });
     if (evaluationResult.finalOutput) {
       yield { type: "evaluation", data: evaluationResult.finalOutput };
+      yield {
+        type: "usage",
+        scope: "evaluator",
+        data: buildUsageSnapshot(
+          evaluatorAgentForRun.model,
+          evaluationResult.state.usage
+        ),
+      };
     }
   } catch (error) {
     logger?.warn("evaluation.failed", {

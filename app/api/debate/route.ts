@@ -5,6 +5,7 @@ import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit";
 import { withSecurityHeaders } from "@/lib/security/headers";
 import { createRequestLogger } from "@/lib/logging/logger";
 import { runtimeConfig } from "@/lib/config";
+import { checkInputSafety, sanitizeDebateEvent } from "@/lib/safety/guardrails";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,8 +67,25 @@ export async function POST(req: NextRequest) {
   }
 
   const encoder = new TextEncoder();
-  const { query, domain } = parsed.data;
-  logger.info("request.accepted", { domain });
+  const { query, domain, model } = parsed.data;
+  logger.info("request.accepted", { domain, model });
+
+  const safetyDecision = await checkInputSafety(query, logger);
+  if (!safetyDecision.allowed) {
+    logger.warn("request.blocked", { reason: safetyDecision.reason });
+    const status =
+      safetyDecision.reason === "moderation_unavailable" ? 503 : 403;
+    return new Response(
+      JSON.stringify({ error: safetyDecision.message ?? "Request blocked." }),
+      {
+        status,
+        headers: withSecurityHeaders({
+          "Content-Type": "application/json",
+          "X-Request-Id": requestId,
+        }),
+      }
+    );
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -77,8 +95,9 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        for await (const event of runDebate(query, domain, logger)) {
-          send(event);
+        for await (const event of runDebate(query, domain, model, logger)) {
+          const safeEvent = await sanitizeDebateEvent(event, logger);
+          send(safeEvent);
         }
         controller.close();
         logger.info("request.completed", {

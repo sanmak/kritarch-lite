@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { DOMAIN_OPTIONS } from "@/lib/types";
+import { DOMAIN_OPTIONS, MODEL_OPTIONS } from "@/lib/types";
 
 export const DebateRequestSchema = z.object({
-  query: z.string().min(1),
+  query: z.string().min(1).max(2000),
   domain: z.enum(DOMAIN_OPTIONS),
+  model: z.enum(MODEL_OPTIONS).default(MODEL_OPTIONS[0]),
 });
 
 export const BaselineSchema = z.object({
@@ -58,6 +59,13 @@ export const RevisedPositionSchema = z.object({
   rebuttals: z.array(z.string()),
 });
 
+export const RebuttalSchema = z.object({
+  concessions: z.array(z.string()).describe("Points conceded after reading critiques"),
+  defenses: z.array(z.string()).describe("Points defended against critiques"),
+  refinedPosition: z.enum(["support", "oppose", "nuanced"]),
+  refinedSummary: z.string().describe("Updated summary after rebuttal"),
+});
+
 export const ConsensusVerdictSchema = z.object({
   verdict: z.string().describe("Consensus verdict in 1-2 sentences"),
   agreementScore: z.number().min(0).max(1),
@@ -105,6 +113,7 @@ export const EvaluationSchema = z.object({
   rationale: z.string().describe("1-2 sentence comparison rationale"),
 });
 
+export type RebuttalOutput = z.infer<typeof RebuttalSchema>;
 export type BaselineOutput = z.infer<typeof BaselineSchema>;
 export type JurorPosition = z.infer<typeof JurorPositionSchema>;
 export type Critique = z.infer<typeof CritiqueSchema>;

@@ -1,4 +1,5 @@
 import { LoadingIndicator } from "@/components/loading-indicator";
+import { UsageMeta } from "@/components/usage-meta";
 
 type Verdict = {
   verdict: string;
@@ -10,13 +11,34 @@ type Verdict = {
 
 export type VerdictPanelProps = {
   verdict?: Verdict | null;
+  model?: string | null;
+  costUsd?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  totalTokens?: number | null;
   loading?: boolean;
 };
 
-export function VerdictPanel({ verdict, loading }: VerdictPanelProps) {
+export function VerdictPanel({
+  verdict,
+  model,
+  costUsd,
+  inputTokens,
+  outputTokens,
+  totalTokens,
+  loading,
+}: VerdictPanelProps) {
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
       <h3 className="text-lg font-semibold text-white">Jury Verdict</h3>
+      <UsageMeta
+        model={model}
+        costUsd={costUsd}
+        inputTokens={inputTokens}
+        outputTokens={outputTokens}
+        totalTokens={totalTokens}
+        className="mt-1"
+      />
       {verdict ? (
         <div className="mt-3 space-y-3 text-base text-zinc-200">
           <p>{verdict.verdict}</p>

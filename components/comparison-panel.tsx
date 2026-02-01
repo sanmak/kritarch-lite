@@ -1,5 +1,7 @@
 import { LoadingIndicator } from "@/components/loading-indicator";
+import { UsageMeta } from "@/components/usage-meta";
 import type { EvaluationOutput } from "@/lib/agents/schemas";
+import { formatCostUsd } from "@/lib/usage";
 
 type Baseline = {
   position: string;
@@ -15,23 +17,57 @@ type Verdict = {
   hallucinationFlags?: { juror: string; claim: string; reason: string }[];
 };
 
+type UsageMetaData = {
+  model?: string | null;
+  costUsd?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  totalTokens?: number | null;
+};
+
+type CostSummaryItem = {
+  label: string;
+  costUsd: number | null;
+};
+
+type CostSummary = {
+  items: CostSummaryItem[];
+  totalCost: number | null;
+};
+
 type ComparisonPanelProps = {
-  baseline?: Baseline | null;
+  baselineFair?: Baseline | null;
+  baselineMini?: Baseline | null;
   verdict?: Verdict | null;
   evaluation?: EvaluationOutput | null;
-  loadingBaseline?: boolean;
+  loadingBaselineFair?: boolean;
+  loadingBaselineMini?: boolean;
+  baselineFairMeta?: UsageMetaData | null;
+  baselineMiniMeta?: UsageMetaData | null;
+  evaluatorMeta?: UsageMetaData | null;
+  costSummary?: CostSummary | null;
 };
 
 export function ComparisonPanel({
-  baseline,
+  baselineFair,
+  baselineMini,
   verdict,
   evaluation,
-  loadingBaseline,
+  loadingBaselineFair,
+  loadingBaselineMini,
+  baselineFairMeta,
+  baselineMiniMeta,
+  evaluatorMeta,
+  costSummary,
 }: ComparisonPanelProps) {
   const flags = verdict?.hallucinationFlags ?? [];
   const evaluationDelta = evaluation
     ? evaluation.jury.overall - evaluation.baseline.overall
     : null;
+  const evaluationDeltaPercent =
+    evaluation && evaluation.baseline.overall > 0
+      ? ((evaluationDelta ?? 0) / evaluation.baseline.overall) * 100
+      : null;
   const dimensionScores = evaluation
     ? [
         {
@@ -63,6 +99,8 @@ export function ComparisonPanel({
 
   const formatDelta = (delta: number) =>
     `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}`;
+  const formatPercent = (delta: number) =>
+    `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
   const deltaClassName = (delta: number) =>
     delta > 0
       ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-200"
@@ -79,30 +117,70 @@ export function ComparisonPanel({
     evaluation?.winner === "jury"
       ? "Jury wins"
       : evaluation?.winner === "baseline"
-        ? "Baseline wins"
+        ? "Baseline (selected model) wins"
         : "Tie";
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-      <h3 className="text-lg font-semibold text-white">Single Model vs Jury</h3>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
+      <h3 className="text-lg font-semibold text-white">Baselines vs Jury</h3>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
         <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
-          <p className="text-sm uppercase text-zinc-100">Single Model</p>
-          {baseline ? (
+          <p className="text-sm uppercase text-zinc-100">
+            Baseline (selected model)
+          </p>
+          <UsageMeta
+            model={baselineFairMeta?.model}
+            costUsd={baselineFairMeta?.costUsd}
+            inputTokens={baselineFairMeta?.inputTokens}
+            outputTokens={baselineFairMeta?.outputTokens}
+            totalTokens={baselineFairMeta?.totalTokens}
+            className="mt-1"
+          />
+          {baselineFair ? (
             <div className="mt-2 space-y-2 text-base text-zinc-200">
-              <p>{baseline.summary}</p>
+              <p>{baselineFair.summary}</p>
               <p className="text-sm text-zinc-100">
-                Position: {baseline.position} · Conf:{" "}
-                {baseline.confidence.toFixed(2)}
+                Position: {baselineFair.position} · Conf:{" "}
+                {baselineFair.confidence.toFixed(2)}
               </p>
             </div>
-          ) : loadingBaseline ? (
+          ) : loadingBaselineFair ? (
             <div className="mt-2">
-              <LoadingIndicator label="Baseline in progress" />
+              <LoadingIndicator label="Selected-model baseline in progress" />
             </div>
           ) : (
             <p className="mt-2 text-sm text-zinc-100">
-              Baseline will appear once the debate starts.
+              Selected-model baseline will appear once the debate starts.
+            </p>
+          )}
+        </div>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+          <p className="text-sm uppercase text-zinc-100">
+            Baseline (alternate model)
+          </p>
+          <UsageMeta
+            model={baselineMiniMeta?.model}
+            costUsd={baselineMiniMeta?.costUsd}
+            inputTokens={baselineMiniMeta?.inputTokens}
+            outputTokens={baselineMiniMeta?.outputTokens}
+            totalTokens={baselineMiniMeta?.totalTokens}
+            className="mt-1"
+          />
+          {baselineMini ? (
+            <div className="mt-2 space-y-2 text-base text-zinc-200">
+              <p>{baselineMini.summary}</p>
+              <p className="text-sm text-zinc-100">
+                Position: {baselineMini.position} · Conf:{" "}
+                {baselineMini.confidence.toFixed(2)}
+              </p>
+            </div>
+          ) : loadingBaselineMini ? (
+            <div className="mt-2">
+              <LoadingIndicator label="Alternate baseline in progress" />
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-zinc-100">
+              Alternate baseline will appear once the debate starts.
             </p>
           )}
         </div>
@@ -143,9 +221,19 @@ export function ComparisonPanel({
       {evaluation ? (
         <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
           <p className="text-xl uppercase text-zinc-100">Evaluator scorecard</p>
+          <UsageMeta
+            model={evaluatorMeta?.model}
+            costUsd={evaluatorMeta?.costUsd}
+            inputTokens={evaluatorMeta?.inputTokens}
+            outputTokens={evaluatorMeta?.outputTokens}
+            totalTokens={evaluatorMeta?.totalTokens}
+            className="mt-2"
+          />
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-center">
             <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-              <p className="text-[12px] uppercase text-zinc-100">Baseline</p>
+              <p className="text-[12px] uppercase text-zinc-100">
+                Baseline (selected model)
+              </p>
               <div className="mt-2 flex items-end gap-2">
                 <span className="text-3xl font-semibold text-zinc-100">
                   {evaluation.baseline.overall.toFixed(1)}
@@ -157,13 +245,20 @@ export function ComparisonPanel({
               </p>
             </div>
             <div className="flex items-center justify-center">
-              <span
-                className={`rounded-full border px-3 py-1 text-[20px] font-semibold ${deltaClassName(
-                  evaluationDelta ?? 0,
-                )}`}
-              >
-                {formatDelta(evaluationDelta ?? 0)}
-              </span>
+              <div className="flex flex-col items-center gap-1">
+                <span
+                  className={`rounded-full border px-3 py-1 text-[20px] font-semibold ${deltaClassName(
+                    evaluationDelta ?? 0,
+                  )}`}
+                >
+                  {evaluationDeltaPercent === null
+                    ? formatDelta(evaluationDelta ?? 0)
+                    : formatPercent(evaluationDeltaPercent)}
+                </span>
+                <span className="text-[12px] text-zinc-200">
+                  Net change vs baseline
+                </span>
+              </div>
             </div>
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3">
               <p className="text-[12px] uppercase text-emerald-200/80">Jury</p>
@@ -242,6 +337,32 @@ export function ComparisonPanel({
           </div>
           <p className="mt-2 text-[16px] text-zinc-100">
             {evaluation.rationale}
+          </p>
+        </div>
+      ) : null}
+      {costSummary?.items.length ? (
+        <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950 p-4">
+          <p className="text-sm uppercase text-zinc-100">
+            Cost summary (estimated)
+          </p>
+          <div className="mt-3 grid gap-2 text-sm text-zinc-200">
+            {costSummary.items.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between"
+              >
+                <span>{item.label}</span>
+                <span>{formatCostUsd(item.costUsd)}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between border-t border-zinc-800 pt-2 text-base font-semibold text-white">
+              <span>Total</span>
+              <span>{formatCostUsd(costSummary.totalCost)}</span>
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-zinc-200">
+            Estimates use public per-token pricing and exclude caching or volume
+            discounts.
           </p>
         </div>
       ) : null}

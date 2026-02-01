@@ -1,4 +1,5 @@
 import { LoadingIndicator } from "@/components/loading-indicator";
+import { UsageMeta } from "@/components/usage-meta";
 
 type Position = "support" | "oppose" | "nuanced";
 
@@ -9,6 +10,11 @@ type JurorPanelProps = {
   streamText: string;
   position?: Position;
   confidence?: number;
+  model?: string | null;
+  costUsd?: number | null;
+  inputTokens?: number | null;
+  outputTokens?: number | null;
+  totalTokens?: number | null;
   loading?: boolean;
   loadingLabel?: string;
 };
@@ -26,6 +32,11 @@ export function JurorPanel({
   streamText,
   position,
   confidence,
+  model,
+  costUsd,
+  inputTokens,
+  outputTokens,
+  totalTokens,
   loading,
   loadingLabel,
 }: JurorPanelProps) {
@@ -35,6 +46,14 @@ export function JurorPanel({
         <div>
           <h3 className="text-base font-semibold text-white">{title}</h3>
           <p className="text-sm text-zinc-100">{subtitle}</p>
+          <UsageMeta
+            model={model}
+            costUsd={costUsd}
+            inputTokens={inputTokens}
+            outputTokens={outputTokens}
+            totalTokens={totalTokens}
+            className="mt-1"
+          />
         </div>
         <span className={`h-2 w-2 rounded-full ${accentClass}`} />
       </div>
