@@ -77,6 +77,14 @@ export const ConsensusVerdictSchema = z.object({
   }),
   keyAgreements: z.array(z.string()),
   keyDisagreements: z.array(z.string()),
+  keyEvidence: z
+    .array(z.string())
+    .default([])
+    .describe("Key evidence supporting the verdict"),
+  nextActions: z
+    .array(z.string())
+    .default([])
+    .describe("Recommended next actions tied to the verdict"),
   reasoningQuality: z.object({
     jurorA: z.number().min(0).max(10),
     jurorB: z.number().min(0).max(10),

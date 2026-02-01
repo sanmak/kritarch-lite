@@ -261,6 +261,8 @@ export const sanitizeDebateEvent = async (
         event.data.finalReasoning,
         ...event.data.keyAgreements,
         ...event.data.keyDisagreements,
+        ...event.data.keyEvidence,
+        ...event.data.nextActions,
       ].join("\n");
       const safety = await screenOutput(combined, logger, "verdict");
       if (safety.allowed) return event;
@@ -272,6 +274,8 @@ export const sanitizeDebateEvent = async (
           finalReasoning: REDACTED_TEXT,
           keyAgreements: [],
           keyDisagreements: [],
+          keyEvidence: [],
+          nextActions: [],
           hallucinationFlags: [],
         },
       };

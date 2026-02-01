@@ -175,6 +175,8 @@ export const debateEvents = [
       positionBreakdown: { support: 1, oppose: 1, nuanced: 1 },
       keyAgreements: ["Agreement"],
       keyDisagreements: ["Disagreement"],
+      keyEvidence: ["Evidence one", "Evidence two"],
+      nextActions: ["Next action one", "Next action two"],
       reasoningQuality: { jurorA: 7, jurorB: 6, jurorC: 7 },
       hallucinationFlags: [
         { juror: "A", claim: "Claim", reason: "Reason" },

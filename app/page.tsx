@@ -150,10 +150,275 @@ const GLOSSARY_TERMS: GlossaryTerm[] = [
   },
 ];
 
+type AgentProfile = {
+  id: string;
+  unit: string;
+  name: string;
+  role: string;
+  callSign: string;
+  status: string;
+  tagline: string;
+  details: string[];
+  metadata: { label: string; value: string }[];
+  stats: { label: string; value: number }[];
+  portraitClass: string;
+  accentClass: string;
+  barClass: string;
+  badgeClass: string;
+};
+
+const AGENT_PROFILES: AgentProfile[] = [
+  {
+    id: "cautious-analyst",
+    unit: "Juror 1",
+    name: "Cautious Analyst",
+    role: "Risk & compliance control",
+    callSign: "CA",
+    status: "Operational",
+    tagline:
+      "Stabilizes the debate with rigorous checks and uncertainty flags.",
+    details: [
+      "Validates assumptions and flags unknowns.",
+      "Surfaces edge cases and regulatory risk triggers.",
+      "Recommends guardrails and fallback paths.",
+    ],
+    metadata: [
+      { label: "Bias", value: "Risk-averse" },
+      { label: "Lens", value: "Evidence-first" },
+      { label: "Output", value: "Safety notes" },
+    ],
+    stats: [
+      { label: "Evidence", value: 92 },
+      { label: "Risk", value: 96 },
+      { label: "Speed", value: 62 },
+    ],
+    portraitClass: "from-sky-500/40 via-sky-400/10 to-transparent",
+    accentClass: "bg-sky-400",
+    barClass: "bg-gradient-to-r from-sky-400 to-cyan-300",
+    badgeClass: "border-sky-500/40 bg-sky-500/10 text-sky-200",
+  },
+  {
+    id: "devils-advocate",
+    unit: "Juror 2",
+    name: "Devil's Advocate",
+    role: "Counterfactual pressure tests",
+    callSign: "DA",
+    status: "Operational",
+    tagline: "Challenges consensus to prevent blind spots and groupthink.",
+    details: [
+      "Introduces counterexamples and hard constraints.",
+      "Stress-tests weak logic and shaky evidence.",
+      "Reframes the prompt from adversarial angles.",
+    ],
+    metadata: [
+      { label: "Bias", value: "Contrarian" },
+      { label: "Lens", value: "Red-team" },
+      { label: "Output", value: "Gaps found" },
+    ],
+    stats: [
+      { label: "Evidence", value: 78 },
+      { label: "Risk", value: 84 },
+      { label: "Speed", value: 82 },
+    ],
+    portraitClass: "from-rose-500/40 via-orange-400/10 to-transparent",
+    accentClass: "bg-rose-400",
+    barClass: "bg-gradient-to-r from-rose-400 to-amber-300",
+    badgeClass: "border-rose-500/40 bg-rose-500/10 text-rose-200",
+  },
+  {
+    id: "pragmatic-expert",
+    unit: "Juror 3",
+    name: "Pragmatic Expert",
+    role: "Decision-ready synthesis",
+    callSign: "PE",
+    status: "Operational",
+    tagline: "Turns the debate into an actionable plan with clear tradeoffs.",
+    details: [
+      "Balances risks with execution realities.",
+      "Prioritizes next steps and owners.",
+      "Delivers concise, decision-ready guidance.",
+    ],
+    metadata: [
+      { label: "Bias", value: "Execution-focused" },
+      { label: "Lens", value: "Tradeoff-aware" },
+      { label: "Output", value: "Action plan" },
+    ],
+    stats: [
+      { label: "Evidence", value: 86 },
+      { label: "Risk", value: 74 },
+      { label: "Speed", value: 90 },
+    ],
+    portraitClass: "from-emerald-500/40 via-lime-400/10 to-transparent",
+    accentClass: "bg-emerald-400",
+    barClass: "bg-gradient-to-r from-emerald-400 to-lime-300",
+    badgeClass: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+  },
+];
+
+const JURY_PROTOCOLS = [
+  "Consensus synthesis with dissent flags.",
+  "Confidence-weighted verdict framing.",
+  "Actionable next steps with tradeoffs.",
+];
+
+const JURY_DELIVERABLES = [
+  { label: "Verdict", description: "Final decision with rationale." },
+  { label: "Key evidence", description: "Most persuasive facts or signals." },
+  { label: "Risk flags", description: "Open questions and failure modes." },
+  { label: "Next actions", description: "Practical steps to move forward." },
+];
+
 type SampleQuestion = {
   id: string;
   domain: Domain;
   prompt: string;
+};
+
+type DomainSuggestion = {
+  domain: Domain;
+  score: number;
+  evidence: string[];
+};
+
+const DOMAIN_KEYWORDS: Record<Domain, string[]> = {
+  finance: [
+    "loan",
+    "lending",
+    "credit",
+    "risk",
+    "portfolio",
+    "investment",
+    "interest",
+    "rate",
+    "default",
+    "underwriting",
+    "cash flow",
+    "revenue",
+    "margin",
+    "profit",
+    "balance sheet",
+    "compliance",
+    "fraud",
+    "kyc",
+    "aml",
+    "collateral",
+  ],
+  healthcare: [
+    "patient",
+    "diagnosis",
+    "clinical",
+    "treatment",
+    "symptom",
+    "triage",
+    "guideline",
+    "icd",
+    "medication",
+    "drug",
+    "dosage",
+    "hospital",
+    "care plan",
+    "screening",
+    "outcome",
+    "therapy",
+    "lab",
+  ],
+  legal: [
+    "contract",
+    "policy",
+    "liability",
+    "regulation",
+    "compliance",
+    "lawsuit",
+    "legal",
+    "jurisdiction",
+    "clause",
+    "statute",
+    "precedent",
+    "nda",
+    "ip",
+    "terms",
+    "privacy",
+    "gdpr",
+    "hipaa",
+  ],
+  general: [
+    "agi",
+    "ai",
+    "model",
+    "models",
+    "llm",
+    "alignment",
+    "scaling",
+    "compute",
+    "inference",
+    "safety",
+    "product",
+    "strategy",
+    "roadmap",
+    "market",
+    "startup",
+    "forecast",
+    "trend",
+    "trends",
+  ],
+};
+
+const detectDomainSuggestion = (text: string): DomainSuggestion | null => {
+  const normalized = text.toLowerCase();
+  const words = normalized.split(/[^a-z0-9]+/).filter(Boolean);
+  if (!words.length) return null;
+
+  const scores = (Object.keys(DOMAIN_KEYWORDS) as Domain[]).map((domain) => {
+    const keywords = DOMAIN_KEYWORDS[domain];
+    let score = 0;
+    const evidence: string[] = [];
+    keywords.forEach((keyword) => {
+      const isPhrase = keyword.includes(" ");
+      const matches = words.filter((word) => word === keyword);
+      if (matches.length) {
+        score += matches.length * 1.5;
+        if (!evidence.includes(keyword)) {
+          evidence.push(keyword);
+        }
+      } else if (normalized.includes(keyword)) {
+        score += isPhrase ? 1 : 0.5;
+        if (!evidence.includes(keyword)) {
+          evidence.push(keyword);
+        }
+      }
+    });
+    return { domain, score, evidence };
+  });
+
+  const sorted = scores.sort((a, b) => b.score - a.score);
+  const best = sorted[0];
+  const runnerUp = sorted[1];
+  if (!best || best.score <= 0) return null;
+
+  const confidence = Math.min(1, best.score / 3.5);
+  const hasGap = runnerUp ? best.score - runnerUp.score >= 0.75 : true;
+
+  const generalScore =
+    scores.find((item) => item.domain === "general")?.score ?? 0;
+  const bestNonGeneral = sorted.find((item) => item.domain !== "general");
+  if (
+    bestNonGeneral &&
+    bestNonGeneral.score < 1.5 &&
+    generalScore >= 1 &&
+    best.domain !== "general"
+  ) {
+    const generalEvidence =
+      scores.find((item) => item.domain === "general")?.evidence ?? [];
+    return { domain: "general", score: generalScore, evidence: generalEvidence };
+  }
+
+  if (best.domain === "general") {
+    return confidence >= 0.5 ? best : null;
+  }
+
+  if (confidence < 0.6 || !hasGap) return null;
+
+  return best;
 };
 
 type DebatePhase =
@@ -240,6 +505,11 @@ export default function Home() {
   const [history, setHistory] = useState<DebateHistoryItem[]>([]);
   const [historyModelFilter, setHistoryModelFilter] =
     useState<HistoryModelFilter>("all");
+  const [suggestedDomain, setSuggestedDomain] = useState<Domain | null>(null);
+  const [suggestedDomainEvidence, setSuggestedDomainEvidence] = useState<
+    string[]
+  >([]);
+  const [suggestedDomainActive, setSuggestedDomainActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [safetyNotice, setSafetyNotice] = useState<SafetyNotice | null>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -248,6 +518,7 @@ export default function Home() {
   const skipNextSaveRef = useRef(false);
   const startTimeRef = useRef<number | null>(null);
   const progressRef = useRef<HTMLDivElement | null>(null);
+  const suggestionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const HISTORY_KEY = "kritarch-lite:history";
   const HISTORY_LIMIT = 10;
@@ -272,6 +543,43 @@ export default function Home() {
 
     loadSamples();
   }, []);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setSuggestedDomain(null);
+      setSuggestedDomainEvidence([]);
+      setSuggestedDomainActive(false);
+      if (suggestionTimer.current) {
+        clearTimeout(suggestionTimer.current);
+      }
+      return;
+    }
+
+    if (suggestionTimer.current) {
+      clearTimeout(suggestionTimer.current);
+    }
+
+    suggestionTimer.current = setTimeout(() => {
+      const suggestion = detectDomainSuggestion(query);
+      if (!suggestion) {
+        setSuggestedDomain(null);
+        setSuggestedDomainEvidence([]);
+        setSuggestedDomainActive(false);
+        return;
+      }
+
+      const shouldActivate = suggestion.domain !== domain;
+      setSuggestedDomain(suggestion.domain);
+      setSuggestedDomainEvidence(suggestion.evidence);
+      setSuggestedDomainActive(shouldActivate);
+    }, 600);
+
+    return () => {
+      if (suggestionTimer.current) {
+        clearTimeout(suggestionTimer.current);
+      }
+    };
+  }, [query, domain]);
 
   useEffect(() => {
     try {
@@ -790,30 +1098,271 @@ export default function Home() {
             critiques the others, and they converge on a verdict. You get
             structured reasoning, not a single guess.
           </p>
-          <a
-            href="#glossary-heading"
-            className="text-sm font-semibold text-blue-200 underline decoration-blue-400/50 underline-offset-4 hover:text-blue-100"
-          >
-            Jump to glossary
-          </a>
+          <div className="flex flex-wrap gap-3 text-sm font-semibold text-blue-200">
+            <a
+              href="#debate-entry"
+              className="underline decoration-blue-400/50 underline-offset-4 hover:text-blue-100"
+            >
+              Jump to debate
+            </a>
+            <a
+              href="#glossary-heading"
+              className="underline decoration-blue-400/50 underline-offset-4 hover:text-blue-100"
+            >
+              Jump to glossary
+            </a>
+          </div>
         </header>
 
         <section
-          aria-labelledby="team-analogy-heading"
-          className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4"
+          aria-labelledby="agent-roster-heading"
+          className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/70 p-6"
         >
-          <h2
-            id="team-analogy-heading"
-            className="text-sm font-semibold uppercase tracking-wide text-zinc-200"
-          >
-            Human team analogy
-          </h2>
-          <p className="mt-2 text-sm text-zinc-100">
-            Teams delegate research to members and seniors, regroup to compare
-            findings, and stakeholders make the final call. Kritarch Lite
-            mirrors that flow with AI agents — faster, broader in scope, 24/7 —
-            while keeping a human in the loop.
-          </p>
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.18),transparent_55%)]"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:32px_32px] opacity-60"
+          />
+          <div className="relative">
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-sky-200">
+                Command center
+              </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2
+                  id="agent-roster-heading"
+                  className="text-lg font-semibold text-white"
+                >
+                  Agent roster
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+                  <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-2 py-1 font-mono uppercase tracking-[0.25em] text-zinc-300">
+                    Evidence
+                  </span>
+                  <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-2 py-1 font-mono uppercase tracking-[0.25em] text-zinc-300">
+                    Risk
+                  </span>
+                  <span className="rounded-full border border-zinc-800 bg-zinc-950/70 px-2 py-1 font-mono uppercase tracking-[0.25em] text-zinc-300">
+                    Speed
+                  </span>
+                </div>
+              </div>
+              <p className="max-w-2xl text-sm text-zinc-200">
+                Three specialists debate every prompt. Together they deliver a
+                verdict that is safer, sharper, and ready for action.
+              </p>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {AGENT_PROFILES.map((agent) => (
+                <article
+                  key={agent.id}
+                  className="flex h-full flex-col gap-4 rounded-xl border border-zinc-800 bg-zinc-950/80 p-4 shadow-[0_0_30px_rgba(6,10,20,0.45)]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={`relative h-12 w-12 rounded-lg border border-zinc-700 bg-gradient-to-br ${agent.portraitClass}`}
+                        aria-hidden="true"
+                      >
+                        <div className="absolute inset-0 rounded-lg bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_65%)]" />
+                        <div className="relative flex h-full w-full items-center justify-center rounded-lg bg-zinc-950/80 text-xs font-semibold text-white">
+                          {agent.callSign}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.3em] text-zinc-100">
+                          {agent.unit}
+                        </p>
+                        <h3 className="text-base font-semibold text-white">
+                          {agent.name}
+                        </h3>
+                        <p className="text-xs text-zinc-100">{agent.role}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={`rounded-full border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${agent.badgeClass}`}
+                    >
+                      {agent.status}
+                    </span>
+                  </div>
+
+                  <p className="text-sm text-zinc-200">{agent.tagline}</p>
+
+                  <ul className="grid gap-2 text-xs text-zinc-200">
+                    {agent.details.map((detail) => (
+                      <li key={detail} className="flex items-start gap-2">
+                        <span
+                          className={`mt-1 h-1.5 w-1.5 rounded-full ${agent.accentClass}`}
+                          aria-hidden="true"
+                        />
+                        <span>{detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-auto space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      {agent.metadata.map((item) => (
+                        <span
+                          key={item.label}
+                          className="rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 text-[11px] text-zinc-100"
+                        >
+                          <span className="text-zinc-100">{item.label}:</span>{" "}
+                          {item.value}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="grid gap-2">
+                      {agent.stats.map((stat) => (
+                        <div
+                          key={stat.label}
+                          className="flex items-center gap-3 text-[11px] text-zinc-100"
+                        >
+                          <span className="w-20 font-mono uppercase tracking-[0.25em] text-zinc-100">
+                            {stat.label}
+                          </span>
+                          <div className="h-1.5 flex-1 rounded-full bg-zinc-800">
+                            <div
+                              className={`h-full rounded-full ${agent.barClass}`}
+                              style={{ width: `${stat.value}%` }}
+                            />
+                          </div>
+                          <span className="w-6 text-right text-zinc-100">
+                            {stat.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          aria-labelledby="jury-chamber-heading"
+          className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/70 p-6"
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(14,116,144,0.22),transparent_58%)]"
+          />
+          <div className="relative grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-teal-200">
+                Jury chamber
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2
+                  id="jury-chamber-heading"
+                  className="text-lg font-semibold text-white"
+                >
+                  The jury issues the final verdict
+                </h2>
+                <span className="rounded-full border border-teal-500/40 bg-teal-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-teal-200">
+                  Chief Justice
+                </span>
+              </div>
+              <p className="max-w-xl text-sm text-zinc-200">
+                After the three agents debate, the Chief Justice synthesizes
+                their positions into one decision-ready verdict. If there is
+                disagreement, it is called out explicitly — no silent averages.
+              </p>
+              <ul className="grid gap-2 text-sm text-zinc-200">
+                {JURY_PROTOCOLS.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span
+                      className="mt-1 h-1.5 w-1.5 rounded-full bg-teal-300"
+                      aria-hidden="true"
+                    />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-4">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-300">
+                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 font-mono uppercase tracking-[0.25em] text-zinc-300">
+                    Juror A
+                  </span>
+                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 font-mono uppercase tracking-[0.25em] text-zinc-300">
+                    Juror B
+                  </span>
+                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 font-mono uppercase tracking-[0.25em] text-zinc-300">
+                    Juror C
+                  </span>
+                  <span aria-hidden="true" className="text-xs text-zinc-500">
+                    →
+                  </span>
+                  <span className="rounded-full border border-teal-500/50 bg-teal-500/10 px-2 py-1 font-mono uppercase tracking-[0.25em] text-teal-200">
+                    Chief Justice
+                  </span>
+                  <span aria-hidden="true" className="text-xs text-zinc-500">
+                    →
+                  </span>
+                  <span className="rounded-full border border-zinc-800 bg-zinc-900/70 px-2 py-1 font-mono uppercase tracking-[0.25em] text-zinc-300">
+                    Verdict
+                  </span>
+                </div>
+                <div className="mt-3 rounded-lg border border-teal-500/30 bg-teal-500/5 px-3 py-2">
+                  <p className="text-[12px] uppercase tracking-[0.3em] text-teal-100">
+                    Verdict payload
+                  </p>
+                  <ul className="mt-2 grid gap-2 text-sm text-zinc-200">
+                    {JURY_DELIVERABLES.map((item) => (
+                      <li key={item.label} className="flex gap-2">
+                        <span className="text-teal-200">{item.label}:</span>
+                        <span className="text-zinc-100">
+                          {item.description}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-100">
+                  Jury charter
+                </p>
+                <div className="mt-3 grid gap-2 text-sm text-zinc-200">
+                  <div className="flex items-start gap-2">
+                    <span
+                      className="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-500"
+                      aria-hidden="true"
+                    />
+                    <span>Balanced: evidence, risk, and actionability.</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span
+                      className="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-500"
+                      aria-hidden="true"
+                    />
+                    <span>
+                      Transparent: dissent and low-confidence points are
+                      highlighted.
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span
+                      className="mt-1 h-1.5 w-1.5 rounded-full bg-zinc-500"
+                      aria-hidden="true"
+                    />
+                    <span>
+                      Decision-ready: outputs are scoped for real-world
+                      approval.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section
@@ -861,23 +1410,95 @@ export default function Home() {
           </p>
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
+        <section
+          aria-labelledby="team-analogy-heading"
+          className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-4"
+        >
+          <h2
+            id="team-analogy-heading"
+            className="text-sm font-semibold uppercase tracking-wide text-zinc-200"
+          >
+            Human team analogy
+          </h2>
+          <p className="mt-2 text-sm text-zinc-100">
+            Teams delegate research to members and seniors, regroup to compare
+            findings, and stakeholders make the final call. Kritarch Lite
+            mirrors that flow with AI agents — faster, broader in scope, 24/7 —
+            while keeping a human in the loop.
+          </p>
+        </section>
+
+        <section
+          id="debate-entry"
+          className="rounded-xl border border-zinc-800 bg-zinc-900 p-6"
+        >
           <div className="flex flex-wrap gap-3">
-            {DOMAINS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setDomain(item.id)}
-                className={`rounded-lg border px-4 py-2 text-base ${
-                  domain === item.id
-                    ? "border-blue-400 bg-blue-500/10 text-blue-200"
-                    : "border-zinc-700 text-zinc-100"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
+            {DOMAINS.map((item) => {
+              const isSuggested =
+                suggestedDomainActive && suggestedDomain === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setDomain(item.id)}
+                  className={`rounded-lg border px-4 py-2 text-base transition ${
+                    domain === item.id
+                      ? "border-blue-400 bg-blue-500/10 text-blue-200"
+                      : isSuggested
+                        ? "border-emerald-400 bg-emerald-500/10 text-emerald-100"
+                        : "border-zinc-700 text-zinc-100"
+                  }`}
+                  aria-pressed={domain === item.id}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>{item.label}</span>
+                    {isSuggested ? (
+                      <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-100">
+                        Suggested
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+
+          {suggestedDomainActive && suggestedDomain ? (
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-emerald-200">
+                    Domain suggestion
+                  </p>
+                  <p className="mt-1">
+                    Looks like a{" "}
+                    <span className="font-semibold">
+                      {
+                        DOMAINS.find((entry) => entry.id === suggestedDomain)
+                          ?.label
+                      }
+                    </span>{" "}
+                    question.
+                  </p>
+                  {suggestedDomainEvidence.length ? (
+                    <p className="mt-1 text-xs text-emerald-200/80">
+                      Signals: {suggestedDomainEvidence.slice(0, 4).join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDomain(suggestedDomain);
+                    setSuggestedDomainActive(false);
+                  }}
+                  className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {samplesLoading ? (
             <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-100">
@@ -933,7 +1554,7 @@ export default function Home() {
                   </option>
                 ))}
               </select>
-              <span className="text-xs text-zinc-400">
+              <span className="text-sm text-zinc-100">
                 Alternate baseline: {alternateModel}
               </span>
             </div>
@@ -968,64 +1589,6 @@ export default function Home() {
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
           </div>
         </section>
-
-        {history.length ? (
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-base font-semibold text-white">
-                  Debate History
-                </h2>
-                <div className="flex items-center gap-2 text-xs uppercase text-zinc-100">
-                  <span>Filter</span>
-                  <div className="flex items-center gap-2">
-                    {(["all", ...MODEL_OPTIONS] as const).map((option) => {
-                      const isActive = historyModelFilter === option;
-                      return (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => setHistoryModelFilter(option)}
-                          className={`rounded-full border px-2 py-0.5 text-[10px] ${
-                            isActive
-                              ? "border-blue-400 bg-blue-500/10 text-blue-200"
-                              : "border-zinc-800 text-zinc-100"
-                          }`}
-                        >
-                          {option === "all" ? "All" : option}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <span className="text-sm text-zinc-500">
-                {filteredHistory.length} / {history.length}
-              </span>
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {filteredHistory.map((entry) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  onClick={() => loadHistoryEntry(entry)}
-                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-left text-sm text-zinc-100 hover:border-blue-400"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase text-zinc-500">
-                    <div className="flex items-center gap-2">
-                      <span>{entry.domain}</span>
-                      <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
-                        Model: {normalizedHistoryModel(entry.primaryModel)}
-                      </span>
-                    </div>
-                    <span>{new Date(entry.createdAt).toLocaleString()}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-zinc-200">{entry.query}</p>
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
 
         <section
           ref={progressRef}
@@ -1183,6 +1746,15 @@ export default function Home() {
               : "opacity-0"
           }`}
         >
+          <div className="mb-3 rounded-lg border border-sky-500/40 bg-sky-500/10 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-200">
+              Why this wins
+            </p>
+            <p className="mt-1 text-sm text-sky-100">
+              Multi-agent consensus keeps dissent visible and delivers
+              decision-ready outputs.
+            </p>
+          </div>
           <VerdictPanel
             verdict={state.verdict}
             model={verdictMeta?.model}
@@ -1212,6 +1784,64 @@ export default function Home() {
             costSummary={costSummary}
           />
         </div>
+
+        {history.length ? (
+          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-base font-semibold text-white">
+                  Debate History
+                </h2>
+                <div className="flex items-center gap-2 text-xs uppercase text-zinc-100">
+                  <span>Filter</span>
+                  <div className="flex items-center gap-2">
+                    {(["all", ...MODEL_OPTIONS] as const).map((option) => {
+                      const isActive = historyModelFilter === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setHistoryModelFilter(option)}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                            isActive
+                              ? "border-blue-400 bg-blue-500/10 text-blue-200"
+                              : "border-zinc-800 text-zinc-100"
+                          }`}
+                        >
+                          {option === "all" ? "All" : option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              <span className="text-sm text-zinc-500">
+                {filteredHistory.length} / {history.length}
+              </span>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              {filteredHistory.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  onClick={() => loadHistoryEntry(entry)}
+                  className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-left text-sm text-zinc-100 hover:border-blue-400"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs uppercase text-zinc-200">
+                    <div className="flex items-center gap-2">
+                      <span>{entry.domain}</span>
+                      <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-200">
+                        Model: {normalizedHistoryModel(entry.primaryModel)}
+                      </span>
+                    </div>
+                    <span>{new Date(entry.createdAt).toLocaleString()}</span>
+                  </div>
+                  <p className="mt-2 text-sm text-zinc-200">{entry.query}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section
           aria-labelledby="glossary-heading"

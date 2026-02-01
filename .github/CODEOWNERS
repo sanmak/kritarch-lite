@@ -1,0 +1,32 @@
+# CODEOWNERS file for kritarch-lite
+# Each line is a file pattern followed by one or more owners.
+# These owners will be the default owners for everything in the repo.
+# Unless a later match takes precedence, they will be requested for
+# review when someone opens a pull request.
+
+# Default owner for everything in the repo
+* @sanmak
+
+# Documentation
+*.md @sanmak
+/spec/ @sanmak
+
+# Configuration files
+/.github/ @sanmak
+/package.json @sanmak
+/package-lock.json @sanmak
+/tsconfig.json @sanmak
+/.env.example @sanmak
+/Dockerfile @sanmak
+
+# Source code
+/src/ @sanmak
+/app/ @sanmak
+
+# Tests
+/tests/ @sanmak
+*.test.ts @sanmak
+*.test.tsx @sanmak
+
+# API routes
+/app/api/ @sanmak

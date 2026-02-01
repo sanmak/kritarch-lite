@@ -546,7 +546,7 @@ export async function* runDebate(
     `Round 2 critiques: ${critiqueSummary}\n\n` +
     (isDeepDeliberation ? `Rebuttals: ${rebuttalSummary}\n\n` : "") +
     `Round 3 revisions: ${revisionSummary}\n\n` +
-    "Synthesize a final consensus verdict with agreement/confidence scores and hallucination flags.";
+    "Synthesize a final consensus verdict with agreement/confidence scores, key agreements/disagreements, 2-4 key evidence points, hallucination flags, and 2-4 next actions.";
 
   const verdictResult = await run(chiefJusticeAgent, verdictPrompt, { context });
   if (!verdictResult.finalOutput) {
@@ -572,7 +572,9 @@ export async function* runDebate(
       `Agreement score: ${verdict.agreementScore}\n` +
       `Confidence score: ${verdict.confidenceScore}\n` +
       `Key agreements: ${JSON.stringify(verdict.keyAgreements)}\n` +
-      `Key disagreements: ${JSON.stringify(verdict.keyDisagreements)}\n\n` +
+      `Key disagreements: ${JSON.stringify(verdict.keyDisagreements)}\n` +
+      `Key evidence: ${JSON.stringify(verdict.keyEvidence)}\n` +
+      `Next actions: ${JSON.stringify(verdict.nextActions)}\n\n` +
       "Score baseline vs jury for consistency, specificity, reasoning transparency, and coverage. " +
       "Return strict JSON matching the schema.";
     const evaluationResult = await run(evaluatorAgentForRun, evaluationPrompt, { context });

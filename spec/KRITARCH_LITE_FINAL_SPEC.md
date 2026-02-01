@@ -106,6 +106,7 @@
 
 ### Structured outputs
 All agent outputs are validated with Zod.
+The verdict payload includes: `verdict`, `agreementScore`, `confidenceScore`, `keyAgreements`, `keyDisagreements`, `keyEvidence`, `nextActions`, `reasoningQuality`, `hallucinationFlags`, and `finalReasoning`.
 
 ---
 

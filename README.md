@@ -15,6 +15,14 @@ https://kritarch-lite-production.up.railway.app/
 
 Kritarch Lite is designed for high-stakes domains where a single-model answer is not enough. It makes reasoning more auditable by forcing disagreement discovery, explicit critique, and a final consensus verdict.
 
+## UI highlights
+
+- **Command-center roster:** introduces the three specialists (Cautious Analyst, Devil's Advocate, Pragmatic Expert).
+- **Jury chamber:** explains how the Chief Justice synthesizes a final verdict.
+- **Jury Verdict payload:** Verdict, Key evidence, Risk flags, and Next actions, plus agreement/confidence.
+- **Baselines vs Jury:** side-by-side single-model baselines with a structured, decision-ready jury output.
+- **Domain suggestion:** keyword-based detection suggests a likely domain and lets the user apply it.
+
 ## Why multi-agent debate in healthcare, finance, and legal
 
 - **Healthcare:** Patient safety and regulatory expectations demand transparent, evidence-aware reasoning and clear risk caveats.
@@ -86,6 +94,8 @@ flowchart TD
 | **Baseline**          | Two single-model baselines: selected model (fairness) and alternate model (contrast)                                                  |
 | **Jurors**            | Three agents with distinct reasoning styles (Cautious Analyst, Devil's Advocate, Pragmatic Expert)                                    |
 | **Chief Justice**     | Aggregates juror outputs into the final verdict                                                                                       |
+| **Key evidence**      | Evidence points supporting the verdict                                                                                                |
+| **Next actions**      | Concrete follow-up steps to move the decision forward                                                                                |
 | **Fast-track**        | Coordination mode that skips critique and revision when agreement is high                                                             |
 | **Standard mode**     | Default coordination path with critique and revision rounds                                                                           |
 | **Deep deliberation** | Extra-thorough mode triggered by low agreement (< 40%); adds a rebuttal round                                                         |
@@ -205,10 +215,11 @@ curl http://localhost:3000/api/samples
 
 ## Demo steps
 
-1. Choose a domain (Finance/Healthcare/Legal/General)
-2. Enter a question and click **Start Debate**
-3. Watch Round 1–3 stream live
-4. Review the Jury Verdict + Comparison panel with evaluator scores
+1. Paste or type a question (domain suggestion may appear)
+2. Choose a domain or click **Apply** on the suggestion
+3. Click **Start Debate**
+4. Watch Round 1–3 stream live
+5. Review the Jury Verdict + Comparison panel with evaluator scores
 
 ## Suggested demo prompt
 

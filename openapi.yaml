@@ -409,6 +409,14 @@ components:
           type: array
           items:
             type: string
+        keyEvidence:
+          type: array
+          items:
+            type: string
+        nextActions:
+          type: array
+          items:
+            type: string
         reasoningQuality:
           $ref: "#/components/schemas/ReasoningQuality"
         hallucinationFlags:
@@ -425,6 +433,8 @@ components:
           positionBreakdown,
           keyAgreements,
           keyDisagreements,
+          keyEvidence,
+          nextActions,
           reasoningQuality,
           hallucinationFlags,
           finalReasoning,

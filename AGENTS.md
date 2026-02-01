@@ -29,6 +29,13 @@
 - Always use the OpenAI developer documentation MCP server if you need to work with the OpenAI API, ChatGPT Apps SDK, Codex, or related docs without me having to explicitly ask.
 - After any code change, run `npm run lint` unless the user explicitly says not to.
 
+## Product & UI Notes
+- Command-center roster introduces the three jurors (Cautious Analyst, Devil's Advocate, Pragmatic Expert).
+- Jury chamber explains Chief Justice synthesis and verdict payload.
+- Jury Verdict panel is structured: Verdict, Key evidence, Risk flags, Next actions.
+- Baselines vs Jury compares single-model baselines to the jury output.
+- Domain suggestion uses keyword heuristics in `app/page.tsx` and offers an Apply action.
+
 ## Model Policy & Defaults
 - Quality-first defaults: `OPENAI_MODEL=gpt-5.2`, `OPENAI_BASELINE_MODEL=gpt-5-mini`.
 - Jurors, Chief Justice, and Evaluator use `OPENAI_MODEL`; the Baseline uses `OPENAI_BASELINE_MODEL`.

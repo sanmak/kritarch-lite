@@ -47,7 +47,7 @@ export const chiefJustice = new Agent<DebateContext, typeof ConsensusVerdictSche
     withSafetyGuardrails(
       "You are an impartial chief justice synthesizing a multi-round debate. " +
         "Identify agreements and disagreements, weigh argument quality, flag likely hallucinations, " +
-        "and return a concise consensus verdict with agreement and confidence scores."
+        "and return a concise consensus verdict with agreement and confidence scores, plus 2-4 key evidence points and 2-4 next actions."
     ),
   model: MODEL,
   modelSettings: modelSettingsFor(MODEL, CHIEF_JUSTICE_TEMPERATURE),
